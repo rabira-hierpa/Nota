@@ -1,0 +1,64 @@
+{
+  "name": "amharic-stt",
+  "productName": "Amharic Speech to Text",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Record your voice and get Amharic text, transcribed locally by VoiceStudio.",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n next,main,app -c green,blue,magenta \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:app\"",
+    "dev:renderer": "next dev -p 3123",
+    "dev:main": "tsup --watch",
+    "dev:app": "wait-on tcp:3123 file:dist-electron/main.js file:dist-electron/preload.js && cross-env ELECTRON_RENDERER_URL=http://localhost:3123 electron .",
+    "build": "next build && tsup",
+    "start": "electron .",
+    "package": "npm run build && electron-builder",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test"
+  },
+  "dependencies": {
+    "@untitledui/icons": "^0.0.22",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "tailwindcss": "^4",
+    "tsup": "^9.0.0",
+    "typescript": "^5",
+    "vitest": "^4.1.10",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.rzcodes.amharic-stt",
+    "productName": "Amharic Speech to Text",
+    "files": [
+      "dist-electron/**",
+      "out/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Records your voice so it can be transcribed into Amharic text."
+      }
+    }
+  }
+}

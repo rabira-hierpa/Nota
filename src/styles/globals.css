@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Tokens follow the Dandii palette: one green accent, quiet neutrals. Red is
+   reserved for the record control. */
+@theme {
+  --font-sans: var(--font-inter), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
+  /* Amharic text: Noto Sans Ethiopic first so Ge'ez and its punctuation share
+     one face; Inter picks up any Latin. */
+  --font-ethiopic: var(--font-noto-ethiopic), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-brand-50: #f0fdf4;
+  --color-brand-100: #dcfce7;
+  --color-brand-600: #16a34a;
+  --color-brand-700: #15803d;
+
+  --color-ink: #1c2321;
+  --color-muted: #5c6b5e;
+  --color-line: #e3e8e4;
+  --color-panel: #f8f9fa;
+  --color-record: #dc2626;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+@keyframes record-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility animate-record-pulse {
+  animation: record-pulse 1.2s ease-in-out infinite;
+}
