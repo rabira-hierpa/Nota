@@ -1,9 +1,10 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import type { ElectronApplication, Page } from "@playwright/test";
 import { startFakeVoiceStudio } from "./fake-voice-studio";
+import { silentWav } from "./silent-wav";
 
 const AMHARIC_TRANSCRIPT = "ሰላም ዓለም፣ እንዴት ነህ?";
 const EDITED_TRANSCRIPT = "ሰላም ዓለም፣ እንዴት ናችሁ?";
@@ -17,10 +18,13 @@ test.beforeEach(async () => {
 
 test.afterEach(() => rm(userData, { recursive: true, force: true }));
 
-/** Launches the built app with Chromium's fake microphone (a steady tone). */
-async function launch(voiceStudioUrl: string): Promise<{ app: ElectronApplication; page: Page }> {
+/** Launches the built app with Chromium's fake microphone (a steady tone unless `extraArgs` say otherwise). */
+async function launch(
+  voiceStudioUrl: string,
+  extraArgs: string[] = [],
+): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
-    args: [".", "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+    args: [".", "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", ...extraArgs],
     env: { ...process.env, VOICESTUDIO_URL: voiceStudioUrl, STT_USER_DATA_DIR: userData },
   });
   const page = await app.firstWindow();
@@ -89,4 +93,22 @@ test("keeps the recording and explains what to do when VoiceStudio is off", asyn
   await expect(page.getByRole("button", { name: "Play" })).toBeEnabled();
   await page.screenshot({ path: "test-results/03-offline.png" });
   await app.close();
+});
+
+test("refuses a silent recording and names the microphone instead of transcribing nothing", async () => {
+  // A virtual input like BlackHole as the system default records pure silence.
+  const silence = path.join(userData, "silence.wav");
+  await writeFile(silence, silentWav(3));
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url, [`--use-file-for-fake-audio-capture=${silence}`]);
+
+  await expect(page.getByLabel("Microphone")).not.toHaveValue("");
+  await record(page);
+
+  await expect(page.getByRole("complementary").getByRole("alert")).toContainText("No sound came from");
+  await expect(page.getByText("Nothing recorded yet.")).toBeVisible();
+  expect(engine.requests).toHaveLength(0);
+  await page.screenshot({ path: "test-results/04-silent.png" });
+  await app.close();
+  await engine.close();
 });

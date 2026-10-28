@@ -6,9 +6,17 @@ const MESSAGES: Record<string, string> = {
   SecurityError: BLOCKED,
   NotFoundError: "No microphone found. Connect one and try again.",
   NotReadableError: "The microphone is in use by another app.",
+  OverconstrainedError: "That microphone isn't connected any more. Pick another one.",
 };
 
 /** Message for a getUserMedia failure, keyed by the DOMException name. */
 export function microphoneErrorMessage(errorName: string): string {
   return MESSAGES[errorName] ?? "Couldn't start recording. Try again.";
+}
+
+/** Shown instead of saving a recording that captured no sound at all. */
+export function silentRecordingMessage(microphoneLabel: string | null): string {
+  return microphoneLabel
+    ? `No sound came from “${microphoneLabel}”. Pick another microphone and try again.`
+    : "No sound was recorded. Check your microphone and try again.";
 }

@@ -1,3 +1,4 @@
+import { peakLevel } from "@/features/transcriber/lib/audio-level";
 import { encodeWav } from "@/features/transcriber/lib/encode-wav";
 import type { CreateRecordingInput } from "@shared/types/recording";
 
@@ -5,11 +6,17 @@ import type { CreateRecordingInput } from "@shared/types/recording";
 export const TARGET_SAMPLE_RATE = 16_000;
 const MS_PER_SECOND = 1000;
 
+export interface ConvertedRecording {
+  input: CreateRecordingInput;
+  /** Loudest sample, 0…1, so the caller can refuse a silent recording. */
+  peak: number;
+}
+
 /**
  * Turns a MediaRecorder blob (WebM/Opus) into 16 kHz mono WAV: a format every
  * VoiceStudio engine reads, with a real duration header so playback can seek.
  */
-export async function toMonoWav(blob: Blob): Promise<CreateRecordingInput> {
+export async function toMonoWav(blob: Blob): Promise<ConvertedRecording> {
   const context = new AudioContext();
   let decoded: AudioBuffer;
   try {
@@ -24,10 +31,13 @@ export async function toMonoWav(blob: Blob): Promise<CreateRecordingInput> {
   source.buffer = decoded;
   source.connect(offline.destination);
   source.start();
-  const rendered = await offline.startRendering();
+  const samples = (await offline.startRendering()).getChannelData(0);
 
   return {
-    audio: encodeWav(rendered.getChannelData(0), TARGET_SAMPLE_RATE),
-    durationMs: Math.round(decoded.duration * MS_PER_SECOND),
+    input: {
+      audio: encodeWav(samples, TARGET_SAMPLE_RATE),
+      durationMs: Math.round(decoded.duration * MS_PER_SECOND),
+    },
+    peak: peakLevel(samples),
   };
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { Stop } from "@untitledui/icons";
+import { MicrophoneSelect } from "@/features/transcriber/components/microphone-select";
 import { useElapsed } from "@/features/transcriber/hooks/use-elapsed";
+import { useSelectedMicrophone } from "@/features/transcriber/hooks/use-microphones";
 import { useRecorder } from "@/features/transcriber/hooks/use-recorder";
 import type { RecorderState } from "@/features/transcriber/hooks/use-recorder";
 import { formatDuration } from "@/features/transcriber/lib/format";
@@ -17,7 +19,8 @@ const IDLE_LABELS: Record<Exclude<RecorderState["kind"], "recording">, string> =
 
 export function RecordButton() {
   const add = useRecordingsStore((state) => state.add);
-  const { state, start, stop } = useRecorder(add);
+  const microphone = useSelectedMicrophone();
+  const { state, start, stop } = useRecorder(microphone, add);
   const elapsed = useElapsed(state.kind === "recording" ? state.startedAt : null);
   const recording = state.kind === "recording";
   const busy = state.kind === "starting" || state.kind === "saving";
@@ -52,6 +55,7 @@ export function RecordButton() {
           </>
         )}
       </button>
+      <MicrophoneSelect disabled={recording || busy} />
       {state.kind === "error" ? (
         <p role="alert" className="px-1 text-xs leading-5 text-red-700">
           {state.message}

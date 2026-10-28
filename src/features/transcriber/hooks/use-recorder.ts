@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { microphoneErrorMessage } from "@/features/transcriber/lib/microphone-error";
+import { SILENT_PEAK } from "@/features/transcriber/lib/audio-level";
+import { microphoneErrorMessage, silentRecordingMessage } from "@/features/transcriber/lib/microphone-error";
 import { toMonoWav } from "@/features/transcriber/lib/to-mono-wav";
+import type { Microphone } from "@/features/transcriber/types/microphone";
 import { MAX_DURATION_MS } from "@shared/schemas/recording";
 import type { CreateRecordingInput, Recording } from "@shared/types/recording";
 import type { Result } from "@shared/types/result";
@@ -18,6 +20,7 @@ interface Capture {
   recorder: MediaRecorder;
   stream: MediaStream;
   chunks: Blob[];
+  microphoneLabel: string | null;
 }
 
 const RECORDER_MIME_TYPE = "audio/webm;codecs=opus";
@@ -31,29 +34,39 @@ function releaseMicrophone(capture: Capture): void {
 }
 
 /**
- * Microphone capture: MediaRecorder while recording, then conversion to WAV
- * and hand-off to `onRecorded` (which saves and starts transcription).
+ * Microphone capture from the chosen device: MediaRecorder while recording,
+ * then conversion to WAV and hand-off to `onRecorded` (which saves and starts
+ * transcription). A recording with no sound is refused instead of saved.
  */
-export function useRecorder(onRecorded: (audio: CreateRecordingInput) => Promise<Result<Recording>>) {
+export function useRecorder(
+  microphone: Microphone | null,
+  onRecorded: (audio: CreateRecordingInput) => Promise<Result<Recording>>,
+) {
   const [state, setState] = useState<RecorderState>({ kind: "idle" });
   const captureRef = useRef<Capture | null>(null);
+  const microphoneRef = useRef(microphone);
   const onRecordedRef = useRef(onRecorded);
 
   useEffect(() => {
+    microphoneRef.current = microphone;
     onRecordedRef.current = onRecorded;
-  }, [onRecorded]);
+  }, [microphone, onRecorded]);
 
   const finish = useCallback(async (capture: Capture) => {
     releaseMicrophone(capture);
     captureRef.current = null;
     setState({ kind: "saving" });
     try {
-      const recorded = await toMonoWav(new Blob(capture.chunks, { type: capture.recorder.mimeType }));
-      if (recorded.durationMs < MIN_DURATION_MS) {
+      const { input, peak } = await toMonoWav(new Blob(capture.chunks, { type: capture.recorder.mimeType }));
+      if (input.durationMs < MIN_DURATION_MS) {
         setState({ kind: "error", message: "That recording was too short. Try again." });
         return;
       }
-      const saved = await onRecordedRef.current(recorded);
+      if (peak < SILENT_PEAK) {
+        setState({ kind: "error", message: silentRecordingMessage(capture.microphoneLabel) });
+        return;
+      }
+      const saved = await onRecordedRef.current(input);
       setState(saved.success ? { kind: "idle" } : { kind: "error", message: saved.error });
     } catch {
       setState({ kind: "error", message: "Couldn't process the recording. Try again." });
@@ -63,10 +76,16 @@ export function useRecorder(onRecorded: (audio: CreateRecordingInput) => Promise
   const start = useCallback(async () => {
     if (captureRef.current) return;
     setState({ kind: "starting" });
+    const chosen = microphoneRef.current;
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+        audio: {
+          deviceId: chosen ? { exact: chosen.id } : undefined,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
       });
     } catch (error) {
       setState({ kind: "error", message: microphoneErrorMessage(error instanceof DOMException ? error.name : "") });
@@ -74,7 +93,12 @@ export function useRecorder(onRecorded: (audio: CreateRecordingInput) => Promise
     }
 
     const options = MediaRecorder.isTypeSupported(RECORDER_MIME_TYPE) ? { mimeType: RECORDER_MIME_TYPE } : undefined;
-    const capture: Capture = { recorder: new MediaRecorder(stream, options), stream, chunks: [] };
+    const capture: Capture = {
+      recorder: new MediaRecorder(stream, options),
+      stream,
+      chunks: [],
+      microphoneLabel: chosen?.label ?? stream.getAudioTracks()[0]?.label ?? null,
+    };
     capture.recorder.addEventListener("dataavailable", (event) => {
       if (event.data.size > 0) capture.chunks.push(event.data);
     });
