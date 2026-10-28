@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 /** Bear's three columns: where to look, what's there, and the note itself. */
 export default function HomePage() {
   return (
-    <div className="grid h-full grid-cols-[224px_300px_minmax(0,1fr)] max-[960px]:grid-cols-[200px_260px_minmax(0,1fr)]">
+    <div className="notes-grid grid h-full grid-cols-[224px_300px_minmax(0,1fr)] max-[960px]:grid-cols-[200px_260px_minmax(0,1fr)]">
       <NotesSidebar />
       <NoteList />
       <NotePane />

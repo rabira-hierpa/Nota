@@ -1,3 +1,5 @@
+import { commandIdSchema } from "@shared/keymap";
+import type { CommandId } from "@shared/keymap";
 import type { DesktopApi } from "@shared/types/desktop-api";
 import type { Result } from "@shared/types/result";
 
@@ -18,4 +20,18 @@ export async function invokeDesktop<T>(call: (api: DesktopApi) => Promise<Result
   } catch {
     return { success: false, error: DESKTOP_ERRORS.unresponsive };
   }
+}
+
+/**
+ * Menu commands from the main process. The id is checked against the known
+ * commands, since it crossed a process boundary. Returns a function that
+ * stops listening; outside Electron there is nothing to hear.
+ */
+export function subscribeToCommands(listener: (command: CommandId) => void): () => void {
+  const events = typeof window === "undefined" ? undefined : window.desktopEvents;
+  if (!events) return () => undefined;
+  return events.onCommand((command) => {
+    const parsed = commandIdSchema.safeParse(command);
+    if (parsed.success) listener(parsed.data);
+  });
 }

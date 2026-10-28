@@ -1,20 +1,25 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { File06, Microphone02, Star01, Tag03, Trash03 } from "@untitledui/icons";
+import { Archive, Calendar, CheckSquare, File06, Microphone02, Star01, Tag03, Trash03 } from "@untitledui/icons";
 import { EngineStatus } from "@/features/notes/components/engine-status";
 import { SectionLink } from "@/features/notes/components/section-link";
+import { SetPasswordDialog } from "@/features/notes/components/set-password-dialog";
 import { SettingsMenu } from "@/features/notes/components/settings-menu";
+import { ShortcutsDialog } from "@/features/notes/components/shortcuts-dialog";
 import { TagTree } from "@/features/notes/components/tag-tree";
 import { useLibrary } from "@/features/notes/hooks/use-library";
-import { useShortcuts } from "@/features/notes/hooks/use-shortcuts";
+import { useCommands } from "@/features/notes/hooks/use-commands";
 import { useTheme } from "@/features/notes/hooks/use-theme";
+import { useZenMode } from "@/features/notes/hooks/use-zen-mode";
 import { SECTION_TITLES } from "@/features/notes/lib/note-sections";
 import type { FixedSectionKind } from "@/features/notes/lib/note-sections";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 
 const SECTIONS: { kind: FixedSectionKind; icon: ComponentType<{ className?: string }> }[] = [
   { kind: "all", icon: File06 },
+  { kind: "today", icon: Calendar },
+  { kind: "todo", icon: CheckSquare },
   { kind: "favorites", icon: Star01 },
   { kind: "voice", icon: Microphone02 },
   { kind: "untagged", icon: Tag03 },
@@ -23,13 +28,14 @@ const SECTIONS: { kind: FixedSectionKind; icon: ComponentType<{ className?: stri
 /** Left column, as in Bear: where to look (sections, then tags), with settings at the foot. */
 export function NotesSidebar() {
   useTheme();
-  useShortcuts();
+  useZenMode();
+  useCommands();
   const { counts, tags } = useLibrary();
   const section = useNotesStore((state) => state.section);
   const showSection = useNotesStore((state) => state.showSection);
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-line bg-sidebar">
+    <aside data-pane="library" className="flex min-h-0 flex-col border-r border-line bg-sidebar">
       {/* Room for the window's traffic lights, and a handle to move it. */}
       <div className="drag-region flex h-13 shrink-0 items-end justify-end px-4 pb-1">
         <span className="text-[13px] font-bold tracking-tight text-ink/80">Nota</span>
@@ -49,7 +55,16 @@ export function NotesSidebar() {
           ))}
         </ul>
         <TagTree tags={tags} />
-        <ul className="mt-5">
+        <ul className="mt-5 space-y-0.5">
+          <li>
+            <SectionLink
+              icon={Archive}
+              label={SECTION_TITLES.archive}
+              count={counts.archive}
+              active={section.kind === "archive"}
+              onSelect={() => showSection({ kind: "archive" })}
+            />
+          </li>
           <li>
             <SectionLink
               icon={Trash03}
@@ -65,6 +80,8 @@ export function NotesSidebar() {
         <EngineStatus />
         <SettingsMenu />
       </footer>
+      <SetPasswordDialog />
+      <ShortcutsDialog />
     </aside>
   );
 }

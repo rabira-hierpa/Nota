@@ -9,7 +9,7 @@ export default function Error({ retry }: Readonly<{ retry: () => void }>) {
         <button
           type="button"
           onClick={() => retry()}
-          className="mt-5 cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className="mt-5 cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90"
         >
           Try again
         </button>

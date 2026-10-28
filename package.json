@@ -21,6 +21,7 @@
     "setup:amharic-model": "bash scripts/setup-amharic-model.sh"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "@tiptap/core": "3.32.0",
     "@tiptap/extension-highlight": "3.32.0",
     "@tiptap/extension-list": "3.32.0",
@@ -33,6 +34,7 @@
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-hook-form": "7.90.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

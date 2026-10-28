@@ -1,3 +1,4 @@
+import { firstLine, noteTitle } from "@/features/notes/lib/note-text";
 import { isEmptySearch, matchesSearch } from "@/features/notes/lib/search";
 import type { SearchQuery } from "@/features/notes/lib/search";
 import { extractTags, hasTag } from "@/features/notes/lib/tags";
@@ -6,32 +7,56 @@ import type { Note } from "@shared/types/note";
 /** The sidebar's places to look: Bear's sections plus one per tag. */
 export type NoteSection =
   | { kind: "all" }
+  | { kind: "today" }
+  | { kind: "todo" }
   | { kind: "favorites" }
   | { kind: "untagged" }
   | { kind: "voice" }
+  | { kind: "archive" }
   | { kind: "trash" }
   | { kind: "tag"; path: string };
 
 export type FixedSectionKind = Exclude<NoteSection["kind"], "tag">;
 
-/** A note with its tags worked out once, rather than on every filter. */
+/** How the note list is ordered (pinned notes lead either way). */
+export type SortOrder = "edited" | "created" | "title";
+
+/** A note with what filtering needs worked out once, rather than on every filter. */
 export interface IndexedNote {
   note: Note;
   tags: string[];
+  /** What search reads: a locked note offers only its title. */
+  searchText: string;
 }
 
 export type SectionCounts = Record<FixedSectionKind, number>;
 
 export const SECTION_TITLES: Record<FixedSectionKind, string> = {
   all: "Notes",
+  today: "Today",
+  todo: "Todo",
   favorites: "Favorites",
   untagged: "Untagged",
   voice: "Voice notes",
+  archive: "Archive",
   trash: "Trash",
 };
 
+export const SORT_LABELS: Record<SortOrder, string> = {
+  edited: "Date edited",
+  created: "Date created",
+  title: "Title",
+};
+
+/** A checklist item left unticked (Tiptap writes `data-checked="false"`). */
+const OPEN_TODO = /data-checked="false"/;
+
 export function indexNotes(notes: readonly Note[]): IndexedNote[] {
-  return notes.map((note) => ({ note, tags: extractTags(note.text) }));
+  return notes.map((note) => {
+    // A locked note's body stays out of tags and search, even while it is open.
+    const searchText = note.lock ? firstLine(note.text) : note.text;
+    return { note, tags: extractTags(searchText), searchText };
+  });
 }
 
 export function sectionTitle(section: NoteSection): string {
@@ -42,13 +67,26 @@ export function isSameSection(a: NoteSection, b: NoteSection): boolean {
   return a.kind === b.kind && (a.kind !== "tag" || (b.kind === "tag" && a.path === b.path));
 }
 
-/** Notes in the Trash appear only in the Trash. */
-export function isInSection({ note, tags }: IndexedNote, section: NoteSection): boolean {
+function isSameDay(iso: string, now: Date): boolean {
+  const date = new Date(iso);
+  return (
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()
+  );
+}
+
+/** Notes in the Trash appear only there; archived notes only in the Archive (and the Trash). */
+export function isInSection({ note, tags }: IndexedNote, section: NoteSection, now: Date = new Date()): boolean {
   if (section.kind === "trash") return note.trashedAt !== null;
   if (note.trashedAt !== null) return false;
+  if (section.kind === "archive") return note.archivedAt !== null;
+  if (note.archivedAt !== null) return false;
   switch (section.kind) {
     case "all":
       return true;
+    case "today":
+      return isSameDay(note.updatedAt, now) || isSameDay(note.createdAt, now);
+    case "todo":
+      return !note.lock && OPEN_TODO.test(note.content);
     case "favorites":
       return note.favorite;
     case "untagged":
@@ -60,26 +98,57 @@ export function isInSection({ note, tags }: IndexedNote, section: NoteSection): 
   }
 }
 
-function byRecency(section: NoteSection) {
-  // The Trash lists what was thrown away last first; everywhere else, what was edited last.
-  const at = (note: Note) => (section.kind === "trash" ? (note.trashedAt ?? note.updatedAt) : note.updatedAt);
-  return (a: IndexedNote, b: IndexedNote) => at(b.note).localeCompare(at(a.note));
+function sortKey(note: Note, section: NoteSection, sort: SortOrder): string {
+  // The Trash and the Archive list what was put there last first.
+  if (section.kind === "trash") return note.trashedAt ?? note.updatedAt;
+  if (section.kind === "archive") return note.archivedAt ?? note.updatedAt;
+  return sort === "created" ? note.createdAt : note.updatedAt;
 }
 
-/** The note list: the section's notes that match the search, newest first. */
-export function notesInSection(entries: readonly IndexedNote[], section: NoteSection, query: SearchQuery): Note[] {
+function compareNotes(section: NoteSection, sort: SortOrder) {
+  const pinsLead = section.kind !== "trash" && section.kind !== "archive";
+  return (a: Note, b: Note) => {
+    if (pinsLead && a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (sort === "title" && pinsLead) {
+      const byTitle = noteTitle(a.text).localeCompare(noteTitle(b.text), undefined, { sensitivity: "base" });
+      if (byTitle !== 0) return byTitle;
+    }
+    return sortKey(b, section, sort).localeCompare(sortKey(a, section, sort));
+  };
+}
+
+/** The note list: the section's notes that match the search, pinned first, then in the chosen order. */
+export function notesInSection(
+  entries: readonly IndexedNote[],
+  section: NoteSection,
+  query: SearchQuery,
+  sort: SortOrder = "edited",
+  now: Date = new Date(),
+): Note[] {
   const searching = !isEmptySearch(query);
   return entries
-    .filter((entry) => isInSection(entry, section) && (!searching || matchesSearch(entry.note.text, entry.tags, query)))
-    .sort(byRecency(section))
-    .map((entry) => entry.note);
+    .filter(
+      (entry) =>
+        isInSection(entry, section, now) && (!searching || matchesSearch(entry.searchText, entry.tags, query)),
+    )
+    .map((entry) => entry.note)
+    .sort(compareNotes(section, sort));
 }
 
-export function countSections(entries: readonly IndexedNote[]): SectionCounts {
-  const counts: SectionCounts = { all: 0, favorites: 0, untagged: 0, voice: 0, trash: 0 };
+export function countSections(entries: readonly IndexedNote[], now: Date = new Date()): SectionCounts {
+  const counts: SectionCounts = {
+    all: 0,
+    today: 0,
+    todo: 0,
+    favorites: 0,
+    untagged: 0,
+    voice: 0,
+    archive: 0,
+    trash: 0,
+  };
   for (const entry of entries) {
     for (const kind of Object.keys(counts) as FixedSectionKind[]) {
-      if (isInSection(entry, { kind })) counts[kind] += 1;
+      if (isInSection(entry, { kind }, now)) counts[kind] += 1;
     }
   }
   return counts;

@@ -9,7 +9,7 @@ import { useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useDebouncedSave } from "@/features/notes/hooks/use-debounced-save";
-import { Hashtags } from "@/features/notes/lib/hashtag-extension";
+import { NoteDecorations } from "@/features/notes/lib/note-decorations";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 import { MAX_NOTE_HTML_LENGTH, MAX_NOTE_TEXT_LENGTH } from "@shared/schemas/note";
 import type { Note } from "@shared/types/note";
@@ -39,6 +39,7 @@ function snapshot(editor: Editor): Snapshot {
 export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string) {
   const saveContent = useNotesStore((state) => state.saveContent);
   const showSection = useNotesStore((state) => state.showSection);
+  const openLink = useNotesStore((state) => state.openLink);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
   const save = useCallback(
@@ -76,7 +77,10 @@ export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string
       Placeholder.configure({
         placeholder: ({ node }) => (node.type.name === "heading" ? TITLE_PLACEHOLDER : placeholder),
       }),
-      Hashtags.configure({ onTagClick: (tag) => showSection({ kind: "tag", path: tag }) }),
+      NoteDecorations.configure({
+        onTagClick: (tag) => showSection({ kind: "tag", path: tag }),
+        onLinkClick: (title) => void openLink(title),
+      }),
     ],
     editorProps: {
       attributes: {
@@ -91,7 +95,9 @@ export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string
   });
 
   useEffect(() => {
-    editor?.setEditable(!readOnly);
+    // No update event: becoming editable is not an edit, and an "edit" would
+    // re-save the note and move it to the top of the list.
+    editor?.setEditable(!readOnly, false);
   }, [editor, readOnly]);
 
   return { editor, saveState };

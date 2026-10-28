@@ -1,10 +1,10 @@
 "use client";
 
-import { Microphone02, Star01 } from "@untitledui/icons";
+import { Lock01, Microphone02, Pin02, Star01 } from "@untitledui/icons";
 import { HighlightedText } from "@/features/notes/components/highlighted-text";
 import { formatListDate } from "@/features/notes/lib/format";
 import { notePreview, noteTitle } from "@/features/notes/lib/note-text";
-import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { isSealed, useNotesStore } from "@/features/notes/stores/notes-store";
 import { cx } from "@/utils/cx";
 import type { Note } from "@shared/types/note";
 
@@ -25,7 +25,9 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
   const selected = useNotesStore((state) => state.selectedId === note.id);
   const transcribing = useNotesStore((state) => state.transcribingIds.includes(note.id));
   const title = noteTitle(note.text);
-  const preview = notePreview(note.text);
+  // A locked note never shows its text in the list, even while it is open.
+  const preview = note.lock ? "" : notePreview(note.text);
+  const sealed = useNotesStore((state) => isSealed(note, state.openedIds));
 
   return (
     <li className="border-b border-line/70 last:border-b-0">
@@ -50,6 +52,12 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
           >
             {title ? <HighlightedText text={title} terms={terms} /> : placeholderTitle(note, transcribing)}
           </span>
+          {note.pinned ? (
+            <>
+              <Pin02 className="size-3.5 shrink-0 text-accent" aria-hidden />
+              <span className="sr-only">Pinned</span>
+            </>
+          ) : null}
           {note.favorite ? (
             <>
               <Star01 className="size-3.5 shrink-0 text-accent" fill="currentColor" aria-hidden />
@@ -64,6 +72,12 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
         ) : null}
         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
           <time dateTime={note.updatedAt}>{formatListDate(note.updatedAt)}</time>
+          {note.lock ? (
+            <span className="inline-flex items-center gap-1">
+              <Lock01 className="size-3" aria-hidden />
+              {sealed ? "Locked" : "Unlocked"}
+            </span>
+          ) : null}
           {note.audio ? (
             <>
               <Microphone02 className="size-3" aria-hidden />

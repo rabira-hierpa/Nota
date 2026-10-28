@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Edit05, Trash03 } from "@untitledui/icons";
 import { IconButton } from "@/features/notes/components/icon-button";
 import { NoteListItem } from "@/features/notes/components/note-list-item";
 import { RecordButton } from "@/features/notes/components/record-button";
 import { SearchField } from "@/features/notes/components/search-field";
+import { SortSelect } from "@/features/notes/components/sort-select";
 import { useLibrary, useVisibleNotes } from "@/features/notes/hooks/use-library";
 import { useLoadNotes } from "@/features/notes/hooks/use-load-notes";
 import { useSelectedMicrophone } from "@/features/notes/hooks/use-microphones";
 import { useRecorder } from "@/features/notes/hooks/use-recorder";
+import { onCommand } from "@/features/notes/lib/command-bus";
 import { isEmptySearch } from "@/features/notes/lib/search";
 import { sectionTitle } from "@/features/notes/lib/note-sections";
 import type { NoteSection } from "@/features/notes/lib/note-sections";
@@ -22,6 +24,12 @@ function emptyMessage(section: NoteSection): string {
   switch (section.kind) {
     case "all":
       return "No notes yet. Write one with ⌘N, or speak one with the microphone.";
+    case "today":
+      return "Nothing written or changed today yet.";
+    case "todo":
+      return "No open checklist items. Add one with the checklist button.";
+    case "archive":
+      return "Archive notes you want to keep but not see every day.";
     case "favorites":
       return "Star a note to keep it here.";
     case "untagged":
@@ -59,6 +67,25 @@ export function NoteList() {
   // Dictation shares the microphone; it waits while a voice note records.
   useEffect(() => setRecording(recording), [recording, setRecording]);
 
+  // ⌘⇧R starts a voice note, and stops it again.
+  const latest = useRef({ recorder, dictating, prepareModel });
+  useEffect(() => {
+    latest.current = { recorder, dictating, prepareModel };
+  });
+  useEffect(
+    () =>
+      onCommand("recordVoiceNote", () => {
+        const current = latest.current;
+        if (current.recorder.state.kind === "recording") current.recorder.stop();
+        else if (current.recorder.state.kind === "idle" || current.recorder.state.kind === "error") {
+          if (current.dictating) return;
+          current.prepareModel();
+          void current.recorder.start();
+        }
+      }),
+    [],
+  );
+
   const confirmEmptyTrash = () => {
     // Every note in the Trash goes, not only those the search shows.
     const which = trashed === 1 ? "the note in the Trash" : `all ${trashed} notes in the Trash`;
@@ -66,7 +93,7 @@ export function NoteList() {
   };
 
   return (
-    <section aria-label="Notes" className="flex min-h-0 flex-col border-r border-line bg-list">
+    <section aria-label="Notes" data-pane="list" className="flex min-h-0 flex-col border-r border-line bg-list">
       <header className="drag-region shrink-0 space-y-2.5 px-4 pb-3 pt-3.5">
         <div className="flex h-8 items-center gap-1">
           <h1 className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">
@@ -100,6 +127,11 @@ export function NoteList() {
           </p>
         ) : null}
         <SearchField />
+        {inTrash ? null : (
+          <div className="-mb-1 flex justify-end">
+            <SortSelect />
+          </div>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

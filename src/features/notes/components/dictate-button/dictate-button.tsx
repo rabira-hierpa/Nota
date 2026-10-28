@@ -30,9 +30,9 @@ export function DictateButton({ state, disabled, onStart, onStop }: DictateButto
         type="button"
         onClick={onStop}
         aria-pressed
-        className="no-drag inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-accent px-3 text-xs font-semibold text-white shadow-sm transition-opacity duration-150 hover:opacity-90"
+        className="no-drag inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-accent px-3 text-xs font-semibold text-on-accent shadow-sm transition-opacity duration-150 hover:opacity-90"
       >
-        <span className="size-1.5 animate-record-pulse rounded-full bg-white" aria-hidden />
+        <span className="size-1.5 animate-record-pulse rounded-full bg-on-accent" aria-hidden />
         <span>Stop dictating</span>
         <span className="font-mono tabular-nums">{formatDuration(elapsed)}</span>
         <Stop className="size-3.5" aria-hidden />

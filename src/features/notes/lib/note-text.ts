@@ -30,6 +30,11 @@ function splitTitle(text: string): { title: string; rest: string[] } {
   };
 }
 
+/** The first line with text, whole: what a `[[link]]` names, and all a locked note shows. */
+export function firstLine(text: string): string {
+  return lines(text)[0] ?? "";
+}
+
 /** Like Bear, a note's title is its first line. Empty when the note has no text. */
 export function noteTitle(text: string): string {
   return splitTitle(text).title;

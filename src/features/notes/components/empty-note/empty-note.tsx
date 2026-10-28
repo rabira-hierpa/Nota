@@ -22,11 +22,11 @@ export function EmptyNote() {
           <button
             type="button"
             onClick={() => void createNote()}
-            className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 text-[13px] font-semibold text-white shadow-sm transition-opacity duration-150 hover:opacity-90"
+            className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 text-[13px] font-semibold text-on-accent shadow-sm transition-opacity duration-150 hover:opacity-90"
           >
             <Edit05 className="size-4" aria-hidden />
             New note
-            <kbd className="ml-1 font-sans text-xs text-white/80">⌘N</kbd>
+            <kbd className="ml-1 font-sans text-xs text-on-accent/80">⌘N</kbd>
           </button>
         </div>
       )}

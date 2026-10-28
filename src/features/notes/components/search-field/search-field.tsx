@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchSm, XClose } from "@untitledui/icons";
-import { SEARCH_INPUT_ID } from "@/features/notes/hooks/use-shortcuts";
+import { SEARCH_INPUT_ID } from "@/features/notes/hooks/use-commands";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 
 /** Searches the current section as you type; `#tag` narrows by tag. ⌘F focuses it, Escape clears it. */

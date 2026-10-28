@@ -30,7 +30,7 @@ export function TrashBanner({ noteId }: TrashBannerProps) {
       <button
         type="button"
         onClick={confirmDelete}
-        className="h-8 cursor-pointer rounded-md bg-accent px-3 font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+        className="h-8 cursor-pointer rounded-md bg-record px-3 font-semibold text-white transition-opacity duration-150 hover:opacity-90"
       >
         Delete for good
       </button>

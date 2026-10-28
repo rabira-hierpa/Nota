@@ -166,6 +166,19 @@ describe("saveContent", () => {
   });
 });
 
+describe("saveContent when nothing changed", () => {
+  it("keeps the note's edit time and place, and doesn't call the main process", async () => {
+    const updateNoteContent = vi.fn();
+    vi.stubGlobal("window", { desktop: fakeDesktop({ updateNoteContent }) });
+    useNotesStore.setState({ notes: [typed] });
+
+    await useNotesStore.getState().saveContent(typed.id, typed.content, typed.text);
+
+    expect(useNotesStore.getState().notes[0].updatedAt).toBe(typed.updatedAt);
+    expect(updateNoteContent).not.toHaveBeenCalled();
+  });
+});
+
 describe("toggleFavorite", () => {
   it("keeps text the editor saved after the request went out", async () => {
     vi.stubGlobal("window", { desktop: fakeDesktop() });
@@ -211,5 +224,60 @@ describe("select", () => {
     await Promise.all([useNotesStore.getState().select(voiceNote.id), useNotesStore.getState().select(other.id)]);
 
     expect(useNotesStore.getState().audio?.noteId).toBe(other.id);
+  });
+});
+
+describe("pinning and archiving", () => {
+  it("pins in place, and archiving moves on to the next note", async () => {
+    vi.stubGlobal("window", { desktop: fakeDesktop() });
+    useNotesStore.setState({ notes: [transcribed, typed], selectedId: transcribed.id });
+
+    await useNotesStore.getState().togglePinned(typed.id);
+    expect(useNotesStore.getState().notes.find((note) => note.id === typed.id)?.pinned).toBe(true);
+
+    await useNotesStore.getState().toggleArchived(transcribed.id);
+    expect(useNotesStore.getState().selectedId).toBe(typed.id);
+  });
+});
+
+describe("links", () => {
+  it("opens the note a [[link]] names, or starts one with that title", async () => {
+    const createNote = vi.fn(fakeDesktop().createNote);
+    vi.stubGlobal("window", { desktop: fakeDesktop({ createNote }) });
+    useNotesStore.setState({ notes: [transcribed, typed] });
+
+    await useNotesStore.getState().openLink("የስብሰባ ማስታወሻ #work");
+    expect(useNotesStore.getState().selectedId).toBe(typed.id);
+
+    await useNotesStore.getState().openLink("A new idea");
+    expect(createNote).toHaveBeenCalledWith({ content: "<h1>A new idea</h1>", text: "A new idea" });
+  });
+});
+
+describe("locked notes", () => {
+  const locked: Note = { ...typed, text: "Diary", content: "", lock: { body: "sealed" } };
+
+  it("keeps a locked note sealed until the notes are unlocked, then opens it", async () => {
+    vi.stubGlobal("window", { desktop: fakeDesktop() });
+    useNotesStore.setState({ notes: [locked] });
+
+    await useNotesStore.getState().select(locked.id);
+    expect(useNotesStore.getState().openedIds).toEqual([]);
+
+    await useNotesStore.getState().unlockNotes("password");
+    expect(useNotesStore.getState()).toMatchObject({ openedIds: [locked.id], lockStatus: { unlocked: true } });
+    expect(useNotesStore.getState().notes[0].text).toBe("opened text");
+  });
+
+  it("closes every locked note again when locked", async () => {
+    vi.stubGlobal("window", {
+      desktop: fakeDesktop({ listNotes: async () => ({ success: true, data: [locked] }) }),
+    });
+    useNotesStore.setState({ notes: [{ ...locked, text: "opened text" }], openedIds: [locked.id], selectedId: locked.id });
+
+    await useNotesStore.getState().lockNotes();
+
+    expect(useNotesStore.getState()).toMatchObject({ openedIds: [], lockStatus: { unlocked: false } });
+    expect(useNotesStore.getState().notes[0].text).toBe("Diary");
   });
 });

@@ -64,7 +64,55 @@ describe("notesInSection", () => {
 
 describe("countSections", () => {
   it("counts each section the way it lists", () => {
-    expect(countSections(entries)).toEqual({ all: 3, favorites: 1, untagged: 1, voice: 1, trash: 1 });
+    expect(countSections(entries, new Date("2026-12-01T12:00:00.000Z"))).toEqual({
+      all: 3,
+      today: 0,
+      todo: 0,
+      favorites: 1,
+      untagged: 1,
+      voice: 1,
+      archive: 0,
+      trash: 1,
+    });
+  });
+});
+
+describe("Bear's other sections and ordering", () => {
+  const now = new Date(2026, 9, 29, 12, 0);
+  const todayNote = note("today", { text: "fresh", updatedAt: new Date(2026, 9, 29, 9, 0).toISOString() });
+  const todoNote = note("todo", { text: "list", content: '<ul data-type="taskList"><li data-checked="false"><p>buy</p></li></ul>' });
+  const doneNote = note("done", { text: "done", content: '<ul data-type="taskList"><li data-checked="true"><p>x</p></li></ul>' });
+  const archived = note("archived", { text: "kept #work", archivedAt: "2026-10-05T09:00:00.000Z" });
+  const pinned = note("pinned", { text: "Pinned", pinned: true, updatedAt: "2026-09-01T09:00:00.000Z" });
+  const locked = note("locked", { text: "Diary\nsecret #private", lock: { body: "sealed" } });
+  const more = indexNotes([todayNote, todoNote, doneNote, archived, pinned, locked]);
+
+  it("finds today's notes and notes with open checklist items", () => {
+    expect(ids(notesInSection(more, { kind: "today" }, noSearch, "edited", now))).toEqual(["today"]);
+    expect(ids(notesInSection(more, { kind: "todo" }, noSearch, "edited", now))).toEqual(["todo"]);
+  });
+
+  it("keeps archived notes out of everything but the Archive", () => {
+    expect(ids(notesInSection(more, { kind: "archive" }, noSearch, "edited", now))).toEqual(["archived"]);
+    expect(ids(notesInSection(more, { kind: "tag", path: "work" }, noSearch, "edited", now))).toEqual([]);
+  });
+
+  it("puts pinned notes first, then follows the chosen order", () => {
+    expect(ids(notesInSection(more, { kind: "all" }, noSearch, "edited", now))[0]).toBe("pinned");
+    // Titles A–Z after the pin: Diary, done, fresh, list.
+    expect(ids(notesInSection(more, { kind: "all" }, noSearch, "title", now))).toEqual([
+      "pinned",
+      "locked",
+      "done",
+      "today",
+      "todo",
+    ]);
+  });
+
+  it("keeps a locked note's body out of tags and search", () => {
+    expect(ids(notesInSection(more, { kind: "tag", path: "private" }, noSearch, "edited", now))).toEqual([]);
+    expect(ids(notesInSection(more, { kind: "all" }, parseSearch("secret"), "edited", now))).toEqual([]);
+    expect(ids(notesInSection(more, { kind: "all" }, parseSearch("diary"), "edited", now))).toEqual(["locked"]);
   });
 });
 

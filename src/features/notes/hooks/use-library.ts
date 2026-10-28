@@ -8,6 +8,7 @@ import type { SearchQuery } from "@/features/notes/lib/search";
 import { buildTagTree } from "@/features/notes/lib/tags";
 import type { TagNode } from "@/features/notes/lib/tags";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useViewStore } from "@/features/notes/stores/view-store";
 import type { Note } from "@shared/types/note";
 
 /** Every note with its tags, recomputed only when the notes change. */
@@ -33,10 +34,11 @@ export function useVisibleNotes(): { notes: Note[]; query: SearchQuery } {
   const entries = useIndexedNotes();
   const section = useNotesStore((state) => state.section);
   const search = useNotesStore((state) => state.search);
+  const sort = useViewStore((state) => state.sort);
   return useMemo(() => {
     const query = parseSearch(search);
-    return { notes: notesInSection(entries, section, query), query };
-  }, [entries, section, search]);
+    return { notes: notesInSection(entries, section, query, sort), query };
+  }, [entries, section, search, sort]);
 }
 
 export function useSelectedNote(): Note | null {

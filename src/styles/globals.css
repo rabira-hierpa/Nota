@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 /*
- * Nota's design system (ui-ux-pro-max: "Minimalism & Swiss Style", the
- * "Notes & Writing App" palette: warm ink on paper). Bear's red replaces
- * the palette's amber accent. Colours are semantic tokens that switch with
- * the theme; components never use raw hex.
+ * Nota's design system (ui-ux-pro-max: "Minimalism & Swiss Style" with its
+ * "Agriculture" palette: earth green and harvest gold, for Ethiopia's green
+ * highland fields and the Meskel daisy). Colours are semantic tokens that
+ * switch with the theme; components never use raw hex. Red is kept for the
+ * record button only.
  */
 @theme {
   --font-sans: var(--font-jakarta), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
@@ -25,6 +26,7 @@
   --color-selected: var(--selected);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
   --color-accent-soft: var(--accent-soft);
   --color-mark: var(--mark);
   --color-record: var(--record);
@@ -36,76 +38,83 @@
 
 :root {
   color-scheme: light;
-  --paper: #fbfaf8;
-  --sidebar: #f2f0ec;
-  --list: #f7f5f2;
+  --paper: #fbfcf9;
+  --sidebar: #eef2ec;
+  --list: #f5f7f3;
   --surface: #ffffff;
-  --ink: #24201c;
-  /* 4.9:1 on the sidebar, 5.4:1 on paper. */
-  --muted: #6e665e;
+  --ink: #1d2a21;
+  /* 4.9:1 on the sidebar, 5.6:1 on paper. */
+  --muted: #5d6b61;
   /* Decoration only (rules, idle icons); never body text. */
-  --faint: #a8a097;
-  --line: #e6e1da;
-  --hover: rgb(36 32 28 / 0.05);
-  --selected: #e9e4dd;
-  --accent: #d1453b;
-  /* Accent as text: 5.4:1 on the sidebar and on tag pills. */
-  --accent-ink: #b0322a;
-  --accent-soft: #fbe9e7;
-  --mark: #fcefb4;
+  --faint: #a3ada5;
+  --line: #dde4db;
+  --hover: rgb(29 42 33 / 0.05);
+  --selected: #e0e9de;
+  /* Highland green: the fields, and the green of the flag. */
+  --accent: #15803d;
+  /* Accent as text: 6.9:1 on the sidebar and on tag pills. */
+  --accent-ink: #166534;
+  /* Text on a solid accent: 5:1 white on the green. */
+  --on-accent: #ffffff;
+  --accent-soft: #e2f0e4;
+  /* Harvest gold, like Meskel's adey abeba daisies: highlights and search matches. */
+  --mark: #f8e7a6;
   --record: #dc2626;
-  --online: #2f7d4f;
-  --warn: #b45309;
-  --warn-soft: #fef3c7;
-  --warn-ink: #78350f;
+  --online: #15803d;
+  --warn: #a16207;
+  --warn-soft: #fdf3d3;
+  --warn-ink: #713f12;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --paper: #1c1b1a;
-    --sidebar: #232120;
-    --list: #1f1e1c;
-    --surface: #2a2826;
-    --ink: #ece8e2;
-    --muted: #a59d94;
-    --faint: #5f5953;
-    --line: #34312e;
-    --hover: rgb(236 232 226 / 0.06);
-    --selected: #302d2a;
-    --accent: #ef6a5f;
-    --accent-ink: #f4877e;
-    --accent-soft: rgb(239 106 95 / 0.16);
-    --mark: #5c4d16;
+    --paper: #151b17;
+    --sidebar: #1a221c;
+    --list: #171f19;
+    --surface: #212b24;
+    --ink: #e5ece6;
+    --muted: #9aa89d;
+    --faint: #56635a;
+    --line: #2b3630;
+    --hover: rgb(229 236 230 / 0.06);
+    --selected: #25312a;
+    --accent: #4fbf7a;
+    --accent-ink: #79d39c;
+  --on-accent: #0c1a10;
+    --on-accent: #0c1a10;
+    --accent-soft: rgb(79 191 122 / 0.16);
+    --mark: #5b4b12;
     --record: #f05252;
-    --online: #5fbf86;
-    --warn: #f59e0b;
-    --warn-soft: rgb(245 158 11 / 0.14);
-    --warn-ink: #fcd34d;
+    --online: #4fbf7a;
+    --warn: #eab308;
+    --warn-soft: rgb(234 179 8 / 0.14);
+    --warn-ink: #fde68a;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #1c1b1a;
-  --sidebar: #232120;
-  --list: #1f1e1c;
-  --surface: #2a2826;
-  --ink: #ece8e2;
-  --muted: #a59d94;
-  --faint: #5f5953;
-  --line: #34312e;
-  --hover: rgb(236 232 226 / 0.06);
-  --selected: #302d2a;
-  --accent: #ef6a5f;
-  --accent-ink: #f4877e;
-  --accent-soft: rgb(239 106 95 / 0.16);
-  --mark: #5c4d16;
+  --paper: #151b17;
+  --sidebar: #1a221c;
+  --list: #171f19;
+  --surface: #212b24;
+  --ink: #e5ece6;
+  --muted: #9aa89d;
+  --faint: #56635a;
+  --line: #2b3630;
+  --hover: rgb(229 236 230 / 0.06);
+  --selected: #25312a;
+  --accent: #4fbf7a;
+  --accent-ink: #79d39c;
+  --on-accent: #0c1a10;
+  --accent-soft: rgb(79 191 122 / 0.16);
+  --mark: #5b4b12;
   --record: #f05252;
-  --online: #5fbf86;
-  --warn: #f59e0b;
-  --warn-soft: rgb(245 158 11 / 0.14);
-  --warn-ink: #fcd34d;
+  --online: #4fbf7a;
+  --warn: #eab308;
+  --warn-soft: rgb(234 179 8 / 0.14);
+  --warn-ink: #fde68a;
 }
 
 html,
@@ -313,10 +322,41 @@ body {
   font-weight: 550;
 }
 
+.nota-editor .nota-link {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px;
+  font-weight: 550;
+}
+
 .nota-editor .is-empty:is(p, h1, h2, h3)::before {
   content: attr(data-placeholder);
   color: var(--muted);
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* ── Zen mode: only the note (see useZenMode) ─────────────────────────────── */
+
+html[data-zen] .notes-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-zen] [data-pane],
+html[data-zen] [data-zen-hide] {
+  display: none;
+}
+
+html[data-zen] .nota-page {
+  max-width: 680px;
+  /* Room above and below, so typewriter scrolling can keep the line centred. */
+  padding-top: 18vh;
+  padding-bottom: 50vh;
+}
+
+html[data-zen] .nota-editor {
+  font-size: 19px;
+  line-height: 1.85;
 }

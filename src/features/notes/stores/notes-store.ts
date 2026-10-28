@@ -1,12 +1,14 @@
 import { create } from "zustand";
 import { escapeHtml } from "@/features/notes/lib/escape-html";
-import { indexNotes, isSameSection, notesInSection } from "@/features/notes/lib/note-sections";
-import type { NoteSection } from "@/features/notes/lib/note-sections";
+import { findLinkedNote } from "@/features/notes/lib/note-links";
+import { indexNotes, isInSection, isSameSection, notesInSection } from "@/features/notes/lib/note-sections";
+import type { NoteSection, SortOrder } from "@/features/notes/lib/note-sections";
 import { parseSearch } from "@/features/notes/lib/search";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
+import { useViewStore } from "@/features/notes/stores/view-store";
 import { invokeDesktop } from "@/lib/desktop";
 import { MAX_NOTE_TEXT_LENGTH } from "@shared/schemas/note";
-import type { AttachAudioInput, CreateVoiceNoteInput, Note } from "@shared/types/note";
+import type { AttachAudioInput, CreateVoiceNoteInput, ExportNoteInput, LockStatus, Note } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 
 export type LoadState =
@@ -34,6 +36,9 @@ interface NotesStore {
   audio: AudioSource | null;
   /** The last action that failed, shown until the next one starts. */
   actionError: string | null;
+  lockStatus: LockStatus;
+  /** Locked notes whose text has been opened this session (while the notes are unlocked). */
+  openedIds: string[];
   loadNotes: () => Promise<void>;
   select: (id: string | null) => Promise<void>;
   showSection: (section: NoteSection) => void;
@@ -50,12 +55,29 @@ interface NotesStore {
   emptyTrash: () => Promise<void>;
   attachAudio: (input: AttachAudioInput) => Promise<Result<Note>>;
   transcribe: (id: string) => Promise<void>;
+  togglePinned: (id: string) => Promise<void>;
+  toggleArchived: (id: string) => Promise<void>;
+  /** Locks the note, or removes its lock. Locking needs an app password and the notes unlocked. */
+  toggleLocked: (id: string) => Promise<Result<Note>>;
+  setLockPassword: (password: string) => Promise<Result<LockStatus>>;
+  unlockNotes: (password: string) => Promise<Result<LockStatus>>;
+  /** Closes every locked note; they need the password again. */
+  lockNotes: () => Promise<void>;
+  /** Follows a `[[link]]`: opens the note with that title, or starts one. */
+  openLink: (title: string) => Promise<void>;
+  exportNote: (input: ExportNoteInput) => Promise<Result<{ saved: boolean }>>;
   dismissError: () => void;
 }
 
 const WAV_TYPE = "audio/wav";
 const EMPTY_TITLE = "<h1></h1>";
 const NO_MODEL = "No speech model is available yet. Check the status at the bottom of the sidebar.";
+const LOCKED: LockStatus = { hasPassword: false, unlocked: false };
+
+/** A locked note shows only its title until opened with the password. */
+export function isSealed(note: Note, openedIds: readonly string[]): boolean {
+  return note.lock !== null && !openedIds.includes(note.id);
+}
 
 function replaceNote(notes: Note[], next: Note): Note[] {
   return notes.map((note) => (note.id === next.id ? next : note));
@@ -74,8 +96,11 @@ function mergeReply(notes: Note[], reply: Note): Note[] {
 }
 
 /** What the note list shows right now; actions use it to pick the next note. */
-export function visibleNotes({ notes, section, search }: Pick<NotesStore, "notes" | "section" | "search">): Note[] {
-  return notesInSection(indexNotes(notes), section, parseSearch(search));
+export function visibleNotes(
+  { notes, section, search }: Pick<NotesStore, "notes" | "section" | "search">,
+  sort: SortOrder = useViewStore.getState().sort,
+): Note[] {
+  return notesInSection(indexNotes(notes), section, parseSearch(search), sort);
 }
 
 export const useNotesStore = create<NotesStore>()((set, get) => {
@@ -83,7 +108,8 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
     const previous = get().audio;
     if (previous) URL.revokeObjectURL(previous.url);
     set({ audio: null });
-    if (!note?.audio) return;
+    // A sealed note's recording is sealed too.
+    if (!note?.audio || isSealed(note, get().openedIds)) return;
 
     const result = await invokeDesktop((api) => api.readAudio(note.id));
     const state = get();
@@ -106,6 +132,25 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
     await get().select(next?.id ?? null);
   }
 
+  /** Opens a locked note's text, if the notes are unlocked. */
+  async function openIfLocked(note: Note | undefined): Promise<void> {
+    if (!note || !isSealed(note, get().openedIds) || !get().lockStatus.unlocked) return;
+    const result = await invokeDesktop((api) => api.openLockedNote(note.id));
+    if (!result.success) {
+      set({ actionError: result.error });
+      return;
+    }
+    set((state) => ({
+      notes: replaceNote(state.notes, result.data),
+      openedIds: [...state.openedIds, note.id],
+    }));
+  }
+
+  async function refreshLock(): Promise<void> {
+    const result = await invokeDesktop((api) => api.getLockStatus());
+    if (result.success) set({ lockStatus: result.data });
+  }
+
   /** Applies a reply about one note's favourite, trash or audio state, or reports why it failed. */
   function applyResult(result: Result<Note>): void {
     set((state) =>
@@ -125,10 +170,13 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
     textVersions: {},
     audio: null,
     actionError: null,
+    lockStatus: LOCKED,
+    openedIds: [],
 
     loadNotes: async () => {
       if (get().load.kind === "loading") return;
       set({ load: { kind: "loading" } });
+      await refreshLock();
       const result = await invokeDesktop((api) => api.listNotes());
       if (!result.success) {
         set({ load: { kind: "error", message: result.error } });
@@ -142,6 +190,7 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
     select: async (id) => {
       if (get().selectedId === id) return;
       set({ selectedId: id });
+      await openIfLocked(get().notes.find((note) => note.id === id));
       await loadAudio(get().notes.find((note) => note.id === id));
     },
 
@@ -190,6 +239,12 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
     },
 
     saveContent: (id, content, text) => {
+      const current = get().notes.find((note) => note.id === id);
+      // Nothing changed (the editor reported an update that wasn't an edit):
+      // keep the note's edit time, and its place in the list.
+      if (current && current.content === content && current.text === text) {
+        return Promise.resolve({ success: true, data: current });
+      }
       // Optimistic: the list's title and preview follow the editor as the user types.
       const updatedAt = new Date().toISOString();
       set((state) => ({
@@ -279,6 +334,92 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
         void useEngineStore.getState().check();
       }
     },
+
+    togglePinned: async (id) => {
+      const note = get().notes.find((candidate) => candidate.id === id);
+      if (note) applyResult(await invokeDesktop((api) => api.setPinned({ id, pinned: !note.pinned })));
+    },
+
+    toggleArchived: async (id) => {
+      const note = get().notes.find((candidate) => candidate.id === id);
+      if (!note) return;
+      const before = visibleNotes(get());
+      const result = await invokeDesktop((api) => api.setArchived({ id, archived: note.archivedAt === null }));
+      applyResult(result);
+      if (result.success) await selectNeighbourOf(id, before);
+    },
+
+    toggleLocked: async (id) => {
+      const note = get().notes.find((candidate) => candidate.id === id);
+      if (!note) return { success: false, error: "That note no longer exists." };
+      const result = await invokeDesktop((api) => api.setLocked({ id, locked: note.lock === null }));
+      if (!result.success) {
+        set({ actionError: result.error });
+        return result;
+      }
+      set((state) => ({
+        notes: mergeReply(state.notes, result.data),
+        openedIds: result.data.lock ? [...new Set([...state.openedIds, id])] : state.openedIds.filter((each) => each !== id),
+        actionError: null,
+      }));
+      return result;
+    },
+
+    setLockPassword: async (password) => {
+      const result = await invokeDesktop((api) => api.setLockPassword(password));
+      if (result.success) set({ lockStatus: result.data });
+      return result;
+    },
+
+    unlockNotes: async (password) => {
+      const result = await invokeDesktop((api) => api.unlockNotes(password));
+      if (!result.success) return result;
+      set({ lockStatus: result.data, actionError: null });
+      const selected = get().notes.find((note) => note.id === get().selectedId);
+      await openIfLocked(selected);
+      await loadAudio(get().notes.find((note) => note.id === get().selectedId));
+      return result;
+    },
+
+    lockNotes: async () => {
+      // Close open locked notes first: their editors save any last edit as they go.
+      set({ openedIds: [] });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await invokeDesktop((api) => api.lockNotes());
+      const [status, listed] = await Promise.all([
+        invokeDesktop((api) => api.getLockStatus()),
+        invokeDesktop((api) => api.listNotes()),
+      ]);
+      set({
+        ...(status.success ? { lockStatus: status.data } : {}),
+        ...(listed.success ? { notes: listed.data } : {}),
+        openedIds: [],
+      });
+      await loadAudio(get().notes.find((note) => note.id === get().selectedId));
+    },
+
+    openLink: async (title) => {
+      const target = findLinkedNote(get().notes, title);
+      if (!target) {
+        const result = await invokeDesktop((api) =>
+          api.createNote({ content: `<h1>${escapeHtml(title)}</h1>`, text: title }),
+        );
+        if (!result.success) {
+          set({ actionError: result.error });
+          return;
+        }
+        set((state) => ({ notes: [result.data, ...state.notes], section: { kind: "all" }, search: "" }));
+        await get().select(result.data.id);
+        return;
+      }
+      const entry = indexNotes([target])[0];
+      if (entry && !isInSection(entry, get().section)) {
+        set({ section: target.archivedAt ? { kind: "archive" } : { kind: "all" }, search: "" });
+      }
+      await get().select(target.id);
+    },
+
+    exportNote: (input) => invokeDesktop((api) => api.exportNote(input)),
 
     dismissError: () => set({ actionError: null }),
   };
