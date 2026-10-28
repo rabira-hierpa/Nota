@@ -9,6 +9,12 @@ export const MAX_TRANSCRIPT_LENGTH = 50_000;
 /** The editor's HTML: formatting makes it several times longer than the text. */
 export const MAX_NOTE_HTML_LENGTH = 1_000_000;
 export const MAX_NOTE_TEXT_LENGTH = 200_000;
+/** A locked note's sealed body: its HTML and text, as UTF-8 (Ge'ez is 3 bytes a letter), in base64. */
+const MAX_SEALED_LENGTH = Math.ceil(((MAX_NOTE_HTML_LENGTH + MAX_NOTE_TEXT_LENGTH) * 3 + 1024) / 3) * 4;
+export const MIN_PASSWORD_LENGTH = 6;
+export const MAX_PASSWORD_LENGTH = 200;
+/** What an export may weigh: a note's HTML, wrapped in a styled page. */
+const MAX_EXPORT_LENGTH = MAX_NOTE_HTML_LENGTH + 20_000;
 /** Dictation sends speech up to each pause; the segmenter cuts long stretches well before this. */
 export const MAX_CLIP_DURATION_MS = 60_000;
 /** A WAV header alone is 44 bytes; anything that small carries no audio. */
@@ -45,8 +51,15 @@ export const noteAudioSchema = z.object({
 });
 
 /**
+ * A locked note keeps its body sealed (AES-256-GCM, key from the app
+ * password). While locked, `content` is empty and `text` is the title alone.
+ */
+export const noteLockSchema = z.object({ body: z.string().max(MAX_SEALED_LENGTH) });
+
+/**
  * A note: rich text from the editor (`content`, HTML) and the same text
- * without formatting (`text`) for titles, previews, tags and search.
+ * without formatting (`text`) for titles, previews, tags and search. Fields
+ * added after the first version default, so older note files still read.
  */
 export const noteSchema = z.object({
   id: noteIdSchema,
@@ -55,10 +68,17 @@ export const noteSchema = z.object({
   content: z.string().max(MAX_NOTE_HTML_LENGTH),
   text: z.string().max(MAX_NOTE_TEXT_LENGTH),
   favorite: z.boolean(),
+  /** Pinned notes lead every list they appear in. */
+  pinned: z.boolean().default(false),
+  /** Set while the note is in the Archive: kept, but out of the way. */
+  archivedAt: z.iso.datetime().nullable().default(null),
   /** Set while the note is in the Trash. */
   trashedAt: z.iso.datetime().nullable(),
   audio: noteAudioSchema.nullable(),
+  lock: noteLockSchema.nullable().default(null),
 });
+
+export const passwordSchema = z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH);
 
 const noteContentFields = {
   content: z.string().max(MAX_NOTE_HTML_LENGTH),
@@ -80,6 +100,23 @@ export const updateNoteContentInputSchema = z.object({ id: noteIdSchema, ...note
 export const setFavoriteInputSchema = z.object({ id: noteIdSchema, favorite: z.boolean() }).strict();
 
 export const setTrashedInputSchema = z.object({ id: noteIdSchema, trashed: z.boolean() }).strict();
+
+export const setPinnedInputSchema = z.object({ id: noteIdSchema, pinned: z.boolean() }).strict();
+
+export const setArchivedInputSchema = z.object({ id: noteIdSchema, archived: z.boolean() }).strict();
+
+export const setLockedInputSchema = z.object({ id: noteIdSchema, locked: z.boolean() }).strict();
+
+export const exportFormatSchema = z.enum(["md", "html", "txt"]);
+
+/** A note rendered by the renderer, for the main process to save where the user picks. */
+export const exportNoteInputSchema = z
+  .object({
+    title: z.string().max(200),
+    format: exportFormatSchema,
+    data: z.string().max(MAX_EXPORT_LENGTH),
+  })
+  .strict();
 
 /** Keeps a dictation's audio with the note it was dictated into. */
 export const attachAudioInputSchema = z

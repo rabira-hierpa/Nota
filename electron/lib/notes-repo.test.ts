@@ -1,7 +1,8 @@
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { NoteVault, VaultLockedError } from "@main/lib/note-vault";
 import { NoteNotFoundError, NotesRepo, NoteStateError } from "@main/lib/notes-repo";
 
 let dir: string;
@@ -18,7 +19,7 @@ function tick(): Date {
 beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "nota-repo-"));
   clock = Date.parse("2026-10-28T09:00:00.000Z");
-  repo = new NotesRepo(dir, tick);
+  repo = new NotesRepo(dir, { now: tick });
 });
 
 afterEach(() => rm(dir, { recursive: true, force: true }));
@@ -41,6 +42,12 @@ describe("NotesRepo", () => {
     await repo.updateContent(older.id, { content: "<p>edited</p>", text: "edited" });
 
     expect((await repo.list()).map((note) => note.id)).toEqual([older.id, newer.id]);
+  });
+
+  it("doesn't count saving the same text as an edit", async () => {
+    const note = await repo.create({ content: "<p>ሰላም</p>", text: "ሰላም" });
+
+    expect(await repo.updateContent(note.id, { content: "<p>ሰላም</p>", text: "ሰላም" })).toEqual(note);
   });
 
   it("saves a voice note's audio and waits to transcribe it", async () => {
@@ -120,5 +127,89 @@ describe("NotesRepo", () => {
     ]);
 
     expect((await repo.list())[0]).toMatchObject({ text: "b", favorite: true });
+  });
+
+  it("reads note files from before pinning, archiving and locking existed", async () => {
+    const id = "4f0e3b4a-5f53-4a8e-9f51-0d7a1b8f6c2e";
+    const old = { id, createdAt: "2026-10-01T09:00:00.000Z", updatedAt: "2026-10-01T09:00:00.000Z", content: "", text: "old", favorite: false, trashedAt: null, audio: null };
+    await writeFile(path.join(dir, `${id}.json`), JSON.stringify({ version: 1, note: old }));
+
+    expect(await repo.list()).toEqual([{ ...old, pinned: false, archivedAt: null, lock: null }]);
+  });
+
+  it("pins and archives without counting as an edit", async () => {
+    const note = await repo.create({ content: "", text: "x" });
+
+    expect(await repo.setPinned(note.id, true)).toMatchObject({ pinned: true, updatedAt: note.updatedAt });
+    expect((await repo.setArchived(note.id, true)).archivedAt).not.toBeNull();
+    expect((await repo.setArchived(note.id, false)).archivedAt).toBeNull();
+  });
+});
+
+describe("NotesRepo with locked notes", () => {
+  let vault: NoteVault;
+  const secret = "የይለፍ ቃሉ ሚስጥር ነው";
+
+  beforeEach(async () => {
+    vault = new NoteVault(path.join(dir, "vault.json"));
+    repo = new NotesRepo(path.join(dir, "notes"), { vault, now: tick });
+    await vault.setPassword("ጠንካራ-password");
+  });
+
+  async function rawFile(id: string): Promise<string> {
+    return readFile(path.join(dir, "notes", `${id}.json`), "utf8");
+  }
+
+  it("keeps only the title readable on disk, and the body for whoever has the password", async () => {
+    const note = await repo.create({ content: `<h1>ሚስጥር</h1><p>${secret}</p>`, text: `ሚስጥር\n${secret}` });
+    const locked = await repo.setLocked(note.id, true);
+
+    // The reply carries the open body, so the editor keeps showing it.
+    expect(locked).toMatchObject({ text: `ሚስጥር\n${secret}`, lock: expect.any(Object) });
+    const onDisk = await rawFile(note.id);
+    expect(onDisk).not.toContain(secret);
+    expect((await repo.list())[0]).toMatchObject({ content: "", text: "ሚስጥር" });
+
+    vault.lock();
+    await expect(repo.openLocked(note.id)).rejects.toBeInstanceOf(VaultLockedError);
+    await vault.unlock("ጠንካራ-password");
+    expect((await repo.openLocked(note.id)).content).toContain(secret);
+  });
+
+  it("seals edits to a locked note and refuses them while locked", async () => {
+    const note = await repo.create({ content: "<p>title</p>", text: "title" });
+    await repo.setLocked(note.id, true);
+    await repo.updateContent(note.id, { content: `<p>title</p><p>${secret}</p>`, text: `title\n${secret}` });
+
+    expect(await rawFile(note.id)).not.toContain(secret);
+    vault.lock();
+    await expect(repo.updateContent(note.id, { content: "", text: "" })).rejects.toBeInstanceOf(VaultLockedError);
+  });
+
+  it("seals a locked note's recording too, and opens it for playback", async () => {
+    const note = await repo.createVoice({ audio, durationMs: 1000 });
+    await repo.setLocked(note.id, true);
+
+    expect(await readdir(path.join(dir, "notes"))).toEqual([`${note.id}.json`, `${note.id}.wav.sealed`]);
+    expect(Array.from(await repo.readAudio(note.id))).toEqual([1, 2, 3, 4]);
+    vault.lock();
+    await expect(repo.readAudio(note.id)).rejects.toBeInstanceOf(VaultLockedError);
+  });
+
+  it("removes the lock for good, putting the text and audio back", async () => {
+    const note = await repo.createVoice({ audio, durationMs: 1000 });
+    await repo.setTranscription(note.id, { status: "done", transcribedAt: "2026-10-28T09:05:00.000Z" }, secret);
+    await repo.setLocked(note.id, true);
+    const opened = await repo.setLocked(note.id, false);
+
+    expect(opened).toMatchObject({ text: secret, lock: null });
+    expect(await rawFile(note.id)).toContain(secret);
+    expect(await readdir(path.join(dir, "notes"))).toEqual([`${note.id}.json`, `${note.id}.wav`]);
+  });
+
+  it("can't lock a note while the notes are locked", async () => {
+    const note = await repo.create({ content: "", text: "x" });
+    vault.lock();
+    await expect(repo.setLocked(note.id, true)).rejects.toBeInstanceOf(VaultLockedError);
   });
 });

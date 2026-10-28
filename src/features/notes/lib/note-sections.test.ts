@@ -11,8 +11,11 @@ function note(id: string, fields: Partial<Note>): Note {
     content: "",
     text: "",
     favorite: false,
+    pinned: false,
+    archivedAt: null,
     trashedAt: null,
     audio: null,
+    lock: null,
     ...fields,
   };
 }

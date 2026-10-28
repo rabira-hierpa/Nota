@@ -4,14 +4,17 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDesktopHandlers, HANDLER_ERRORS } from "@main/ipc/desktop-handlers";
 import type { Engines } from "@main/ipc/desktop-handlers";
+import { NoteVault } from "@main/lib/note-vault";
 import { NotesRepo } from "@main/lib/notes-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { ModelId } from "@shared/types/engine";
-import type { CreateNoteInput, CreateVoiceNoteInput } from "@shared/types/note";
+import type { CreateNoteInput, CreateVoiceNoteInput, ExportNoteInput } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 
 let dir: string;
 let repo: NotesRepo;
+let vault: NoteVault;
+let exported: ExportNoteInput[];
 let engineResult: Result<string>;
 
 function fakeEngine() {
@@ -31,7 +34,15 @@ const voice: CreateVoiceNoteInput = { audio: new Uint8Array(100), durationMs: 20
 const missingId = "4f0e3b4a-5f53-4a8e-9f51-0d7a1b8f6c2e";
 
 function handlers() {
-  return createDesktopHandlers(repo, engines);
+  return createDesktopHandlers({
+    repo,
+    engines,
+    vault,
+    saveExport: async (input) => {
+      exported.push(input);
+      return true;
+    },
+  });
 }
 
 async function voiceNote() {
@@ -42,7 +53,9 @@ async function voiceNote() {
 
 beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "nota-ipc-"));
-  repo = new NotesRepo(dir);
+  vault = new NoteVault(path.join(dir, "vault.json"));
+  repo = new NotesRepo(path.join(dir, "notes"), { vault });
+  exported = [];
   hohe = fakeEngine();
   buzzasr = fakeEngine();
   engines = new Map<ModelId, TranscriptionEngine>([
@@ -143,5 +156,31 @@ describe("createDesktopHandlers", () => {
         { model: "buzzasr", kind: "offline", reason: "BuzzASR isn't set up yet." },
       ],
     });
+  });
+
+  it("locks a note behind the password, and says so plainly when it's needed", async () => {
+    const api = handlers();
+    const created = await api.createNote({ content: "<p>ሚስጥር</p>", text: "ሚስጥር" });
+    if (!created.success) throw new Error(created.error);
+    const { id } = created.data;
+
+    expect(await api.setLocked({ id, locked: true })).toEqual({ success: false, error: HANDLER_ERRORS.locked });
+    expect(await api.setLockPassword("123")).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
+    expect(await api.setLockPassword("ጠንካራ-ቃል")).toEqual({ success: true, data: { hasPassword: true, unlocked: true } });
+    expect(await api.setLocked({ id, locked: true })).toMatchObject({ success: true, data: { text: "ሚስጥር" } });
+
+    await api.lockNotes();
+    expect(await api.openLockedNote(id)).toEqual({ success: false, error: HANDLER_ERRORS.locked });
+    expect(await api.unlockNotes("wrong-guess")).toEqual({ success: false, error: HANDLER_ERRORS.wrongPassword });
+    expect(await api.unlockNotes("ጠንካራ-ቃል")).toMatchObject({ success: true, data: { unlocked: true } });
+    expect(await api.openLockedNote(id)).toMatchObject({ success: true, data: { content: "<p>ሚስጥር</p>" } });
+  });
+
+  it("hands a valid export to the save step", async () => {
+    const api = handlers();
+
+    expect(await api.exportNote({ title: "ሰላም", format: "md", data: "# ሰላም" })).toEqual({ success: true, data: { saved: true } });
+    expect(await api.exportNote({ title: "x", format: "exe" as "md", data: "" })).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
+    expect(exported).toEqual([{ title: "ሰላም", format: "md", data: "# ሰላም" }]);
   });
 });

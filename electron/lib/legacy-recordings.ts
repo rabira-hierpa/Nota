@@ -49,8 +49,11 @@ export function recordingToNote(recording: LegacyRecording, hasAudio: boolean): 
     content: transcriptToHtml(recording.transcript),
     text: transcriptToText(recording.transcript),
     favorite: false,
+    pinned: false,
+    archivedAt: null,
     trashedAt: null,
     audio: hasAudio ? { durationMs: recording.durationMs, transcription } : null,
+    lock: null,
   };
 }
 

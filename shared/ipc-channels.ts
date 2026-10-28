@@ -10,6 +10,15 @@ export const IPC_CHANNELS = {
   setTrashed: "notes:set-trashed",
   deleteNote: "notes:delete",
   emptyTrash: "notes:empty-trash",
+  setPinned: "notes:set-pinned",
+  setArchived: "notes:set-archived",
+  setLocked: "notes:set-locked",
+  openLockedNote: "notes:open-locked",
+  getLockStatus: "lock:status",
+  setLockPassword: "lock:set-password",
+  unlockNotes: "lock:unlock",
+  lockNotes: "lock:lock",
+  exportNote: "notes:export",
   attachAudio: "notes:attach-audio",
   readAudio: "notes:read-audio",
   transcribe: "notes:transcribe",
@@ -17,3 +26,6 @@ export const IPC_CHANNELS = {
   listModels: "models:list",
   prepareModel: "models:prepare",
 } as const satisfies Record<keyof DesktopApi, string>;
+
+/** Main → renderer: a menu command (or the system asking to lock the notes). */
+export const COMMAND_CHANNEL = "app:command";

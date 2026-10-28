@@ -1,19 +1,27 @@
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { app, BrowserWindow, nativeTheme, session } from "electron";
+import { app, BrowserWindow, dialog, Menu, nativeTheme, powerMonitor, session } from "electron";
 import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
+import type { SaveExport } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
 import { AmharicModelEngine } from "@main/lib/amharic-model-engine";
+import { buildAppMenu } from "@main/lib/app-menu";
 import { APP_ORIGIN, registerAppSchemePrivileges, serveStaticExport } from "@main/lib/app-protocol";
 import { readAvailableModels, readLocalModelConfig, readVoiceStudioConfig } from "@main/lib/config";
 import { resolveDataFolder } from "@main/lib/data-folder";
+import { safeFileName } from "@main/lib/file-name";
 import { importLegacyRecordings } from "@main/lib/legacy-recordings";
+import { NoteVault } from "@main/lib/note-vault";
 import { NotesRepo } from "@main/lib/notes-repo";
 import { allowMicrophoneOnly } from "@main/lib/permissions";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
+import { COMMAND_CHANNEL } from "@shared/ipc-channels";
+import type { CommandId } from "@shared/keymap";
 import type { ModelId } from "@shared/types/engine";
+import type { ExportFormat } from "@shared/types/note";
 
 // `npm run dev` points this at the Next dev server; otherwise the static
 // export in out/ is served over app://.
@@ -22,7 +30,14 @@ const trustedOrigin = (devRendererUrl && originOf(devRendererUrl)) || APP_ORIGIN
 
 const APP_NAME = "Nota";
 // Matches the editor's paper colour in each theme, so the window never flashes white.
-const BACKGROUND = { light: "#fbfaf8", dark: "#1c1b1a" } as const;
+const BACKGROUND = { light: "#fbfcf9", dark: "#151b17" } as const;
+const EXPORT_FILTERS: Record<ExportFormat, { name: string; extensions: string[] }> = {
+  md: { name: "Markdown", extensions: ["md"] },
+  html: { name: "Web page", extensions: ["html"] },
+  txt: { name: "Plain text", extensions: ["txt"] },
+};
+
+let mainWindow: BrowserWindow | null = null;
 
 // Lets e2e tests (and anyone keeping test data apart) use a throwaway
 // profile, or a throwaway parent folder to exercise the move from the old name.
@@ -44,6 +59,27 @@ function createEngine(model: ModelId): TranscriptionEngine {
     : path.join(app.getAppPath(), "electron", "python");
   return new AmharicModelEngine(readLocalModelConfig(model, { userData: app.getPath("userData"), helperDir }));
 }
+
+/** Runs a command in the renderer: from the menu, or when the Mac locks or sleeps. */
+function sendCommand(command: CommandId): void {
+  const target = BrowserWindow.getFocusedWindow() ?? mainWindow;
+  target?.webContents.send(COMMAND_CHANNEL, command);
+}
+
+/** Asks where to save an export. e2e tests set STT_EXPORT_DIR to skip the dialog. */
+const saveExport: SaveExport = async ({ title, format, data }) => {
+  const name = `${safeFileName(title)}.${format}`;
+  const testDir = process.env.STT_EXPORT_DIR;
+  if (testDir) {
+    await writeFile(path.join(testDir, name), data, "utf8");
+    return true;
+  }
+  const options = { defaultPath: path.join(app.getPath("documents"), name), filters: [EXPORT_FILTERS[format]] };
+  const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+  if (result.canceled || !result.filePath) return false;
+  await writeFile(result.filePath, data, "utf8");
+  return true;
+};
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -67,6 +103,10 @@ function createWindow(): void {
     },
   });
 
+  mainWindow = window;
+  window.on("closed", () => {
+    if (mainWindow === window) mainWindow = null;
+  });
   window.once("ready-to-show", () => window.show());
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
@@ -78,9 +118,9 @@ function createWindow(): void {
   });
 }
 
-async function openNotes(): Promise<NotesRepo> {
+async function openNotes(vault: NoteVault): Promise<NotesRepo> {
   const userData = app.getPath("userData");
-  const repo = new NotesRepo(path.join(userData, "notes"));
+  const repo = new NotesRepo(path.join(userData, "notes"), { vault });
   try {
     const imported = await importLegacyRecordings(path.join(userData, "recordings"), repo);
     if (imported > 0) console.info(`[main] turned ${imported} recordings into notes`);
@@ -97,10 +137,20 @@ app
     if (!devRendererUrl) serveStaticExport(path.join(app.getAppPath(), "out"));
     allowMicrophoneOnly(session.defaultSession, trustedOrigin);
 
-    const repo = await openNotes();
+    const vault = new NoteVault(path.join(app.getPath("userData"), "vault.json"));
+    const repo = await openNotes(vault);
     const engines = new Map(readAvailableModels().map((model) => [model, createEngine(model)] as const));
     app.on("will-quit", () => engines.forEach((engine) => engine.dispose?.()));
-    registerIpc(createDesktopHandlers(repo, engines), trustedOrigin);
+    registerIpc(createDesktopHandlers({ repo, engines, vault, saveExport }), trustedOrigin);
+
+    Menu.setApplicationMenu(buildAppMenu(sendCommand, { development: !app.isPackaged }));
+    // Locked notes close when the Mac locks or sleeps, as in Bear.
+    const lockAll = () => {
+      vault.lock();
+      sendCommand("lockAll");
+    };
+    powerMonitor.on("lock-screen", lockAll);
+    powerMonitor.on("suspend", lockAll);
 
     createWindow();
     app.on("activate", () => {

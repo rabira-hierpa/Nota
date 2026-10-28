@@ -30,8 +30,11 @@ const note: Note = {
   content: "<p>ሰላም</p>",
   text: "ሰላም",
   favorite: false,
+  pinned: false,
+  archivedAt: null,
   trashedAt: null,
   audio: null,
+  lock: null,
 };
 
 function speak(ms: number, level = 0.1): void {

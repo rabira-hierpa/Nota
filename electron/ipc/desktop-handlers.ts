@@ -1,13 +1,20 @@
 import { NoteNotFoundError, NoteStateError } from "@main/lib/notes-repo";
 import type { NotesRepo } from "@main/lib/notes-repo";
+import { PasswordExistsError, VaultLockedError, WrongPasswordError } from "@main/lib/note-vault";
+import type { NoteVault } from "@main/lib/note-vault";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { modelIdSchema } from "@shared/schemas/engine";
 import {
   attachAudioInputSchema,
   createNoteInputSchema,
   createVoiceNoteInputSchema,
+  exportNoteInputSchema,
   noteIdSchema,
+  passwordSchema,
+  setArchivedInputSchema,
   setFavoriteInputSchema,
+  setLockedInputSchema,
+  setPinnedInputSchema,
   setTrashedInputSchema,
   transcribeClipInputSchema,
   transcribeInputSchema,
@@ -15,7 +22,7 @@ import {
 } from "@shared/schemas/note";
 import type { DesktopApi } from "@shared/types/desktop-api";
 import type { ModelId } from "@shared/types/engine";
-import type { Note, TranscribeInput } from "@shared/types/note";
+import type { ExportNoteInput, Note, TranscribeInput } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 import type { z } from "zod";
 
@@ -23,12 +30,24 @@ export const HANDLER_ERRORS = {
   invalid: "That request wasn't valid.",
   notFound: "That note no longer exists.",
   state: "That can't be done to this note right now.",
+  locked: "Locked notes need your password. Unlock them, then try again.",
+  wrongPassword: "That password isn't right.",
   noModel: "That speech model isn't available. Pick another one.",
   generic: "Something went wrong. Try again.",
 } as const;
 
 /** Every model on offer, in the order the renderer lists them. */
 export type Engines = ReadonlyMap<ModelId, TranscriptionEngine>;
+
+/** Saves an export where the user picks (a save dialog); false if they cancel. */
+export type SaveExport = (input: ExportNoteInput) => Promise<boolean>;
+
+export interface HandlerDeps {
+  repo: NotesRepo;
+  engines: Engines;
+  vault: NoteVault;
+  saveExport: SaveExport;
+}
 
 const MAX_STORED_ERROR_LENGTH = 500;
 const CLIP_FILE_NAME = "dictation.wav";
@@ -37,7 +56,7 @@ const CLIP_FILE_NAME = "dictation.wav";
  * The main-process side of `window.desktop`. Arguments are typed by the
  * contract but arrive from another process, so every one is parsed again.
  */
-export function createDesktopHandlers(repo: NotesRepo, engines: Engines): DesktopApi {
+export function createDesktopHandlers({ repo, engines, vault, saveExport }: HandlerDeps): DesktopApi {
   /** The engine about to run; the others let go of their memory while idle. */
   function engineFor(model: ModelId): TranscriptionEngine | null {
     const engine = engines.get(model);
@@ -73,6 +92,20 @@ export function createDesktopHandlers(repo: NotesRepo, engines: Engines): Deskto
         return { id: valid };
       }),
     emptyTrash: () => attempt(async () => ({ ids: await repo.emptyTrash() })),
+    setPinned: (input) => withValid(setPinnedInputSchema, input, ({ id, pinned }) => repo.setPinned(id, pinned)),
+    setArchived: (input) =>
+      withValid(setArchivedInputSchema, input, ({ id, archived }) => repo.setArchived(id, archived)),
+    setLocked: (input) => withValid(setLockedInputSchema, input, ({ id, locked }) => repo.setLocked(id, locked)),
+    openLockedNote: (id) => withValid(noteIdSchema, id, (valid) => repo.openLocked(valid)),
+    getLockStatus: () => attempt(() => vault.status()),
+    setLockPassword: (password) => withValid(passwordSchema, password, (valid) => vault.setPassword(valid)),
+    unlockNotes: (password) => withValid(passwordSchema, password, (valid) => vault.unlock(valid)),
+    lockNotes: () =>
+      attempt(() => {
+        vault.lock();
+        return vault.status();
+      }),
+    exportNote: (input) => withValid(exportNoteInputSchema, input, async (valid) => ({ saved: await saveExport(valid) })),
     attachAudio: (input) =>
       withValid(attachAudioInputSchema, input, ({ id, audio, durationMs, transcribedBy }) =>
         repo.attachAudio(id, { audio, durationMs }, transcribedBy),
@@ -118,11 +151,20 @@ async function attempt<T>(task: () => Promise<T>): Promise<Result<T>> {
   try {
     return { success: true, data: await task() };
   } catch (error) {
-    if (error instanceof NoteNotFoundError) return { success: false, error: HANDLER_ERRORS.notFound };
-    if (error instanceof NoteStateError) return { success: false, error: HANDLER_ERRORS.state };
+    const known = error instanceof Error ? knownError(error) : null;
+    if (known) return { success: false, error: known };
     console.error("[ipc] handler failed:", error instanceof Error ? error.message : error);
     return { success: false, error: HANDLER_ERRORS.generic };
   }
+}
+
+/** The user-facing message for an expected failure; null for a real fault. */
+function knownError(error: Error): string | null {
+  if (error instanceof NoteNotFoundError) return HANDLER_ERRORS.notFound;
+  if (error instanceof NoteStateError || error instanceof PasswordExistsError) return HANDLER_ERRORS.state;
+  if (error instanceof VaultLockedError) return HANDLER_ERRORS.locked;
+  if (error instanceof WrongPasswordError) return HANDLER_ERRORS.wrongPassword;
+  return null;
 }
 
 function invalid<T>(): Promise<Result<T>> {
