@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useEngineStore } from "@/features/transcriber/stores/engine-store";
 
-/** VoiceStudio can take a while to boot its engine, so check often until it answers. */
+/** An engine can take a while to come up, so check often until it answers. */
 const OFFLINE_POLL_MS = 5_000;
 const ONLINE_POLL_MS = 30_000;
 

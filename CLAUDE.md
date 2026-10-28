@@ -3,9 +3,21 @@
 # Amharic Speech to Text
 
 Electron desktop app: record your voice, get Amharic text, edit it, play it
-back. Transcription runs locally in [VoiceStudio](https://github.com/debpalash/VoiceStudio)
-through its OpenAI-compatible speech API (`POST :3900/v1/audio/transcriptions`,
-`language=am`).
+back. Two transcription engines implement `TranscriptionEngine`
+(`electron/lib/transcription-engine.ts`), picked by `STT_ENGINE`:
+
+- `amharic-model` (default): `AmharicModelEngine` runs BuzzASR/amharic (a
+  Whisper large-v3 Amharic fine-tune) through `electron/python/amharic_transcriber.py`
+  on VoiceStudio's installed Python runtime. Set up with `npm run setup:amharic-model`.
+- `voicestudio`: `VoiceStudioClient` posts to [VoiceStudio](https://github.com/debpalash/VoiceStudio)'s
+  OpenAI-compatible API (`POST :3900/v1/audio/transcriptions`, `language=am`).
+
+Hard-won constraints for the Amharic model (see the README for evidence):
+stock Whisper can't do Amharic (~193% CER); the fine-tune must decode in
+float32 (fp16/bf16 on MPS return only end-of-text) and without timestamps
+(it was trained text-only, which is also why VoiceStudio's engines can't run
+it); its published generation config needs `_from_model_config` removed for
+transformers 5.x.
 
 Conventions are carried over from the Dandii app (`~/rz-codes/menged`):
 feature folders, one component per folder, Zustand stores, `@/` aliases,
@@ -15,7 +27,9 @@ strict TypeScript, typed results instead of thrown errors.
 
 ```
 electron/   main process (Node): window, app:// protocol, IPC handlers,
-            VoiceStudio client, recordings on disk. Plays the "server" role.
+            transcription engines, recordings on disk. Plays the "server" role.
+  python/   the model helper (one JSON object per line on stdin/stdout);
+            shipped as an extraResource, so it lives outside the asar.
 shared/     the IPC contract: channel names, Zod schemas, types. Imported by
             both processes, depends on neither.
 src/        Next.js renderer, built as a static export (out/) and loaded over
@@ -25,7 +39,7 @@ e2e/        Playwright tests that drive the built Electron app.
 
 Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desktop.ts`)
 → `window.desktop` (`electron/preload.ts`) → IPC → `electron/ipc/desktop-handlers.ts`
-(Zod-validated) → `RecordingsRepo` / `VoiceStudioClient`.
+(Zod-validated) → `RecordingsRepo` / the active `TranscriptionEngine`.
 
 ## Commands
 
@@ -37,6 +51,7 @@ Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desk
 | `npm run typecheck` / `npm run lint` / `npm test` | Checks (all must pass) |
 | `npm run test:e2e` | Build, then drive the app with a fake mic and a fake VoiceStudio |
 | `npm run package` | Build a distributable with electron-builder |
+| `npm run setup:amharic-model` | Download the pinned model and build its corrected folder |
 
 ## Rules
 

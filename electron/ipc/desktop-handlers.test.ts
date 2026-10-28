@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDesktopHandlers, HANDLER_ERRORS } from "@main/ipc/desktop-handlers";
 import { RecordingsRepo } from "@main/lib/recordings-repo";
-import type { TranscriptionEngine } from "@main/lib/voice-studio";
+import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { CreateRecordingInput } from "@shared/types/recording";
 import type { Result } from "@shared/types/result";
 
@@ -13,7 +13,7 @@ let repo: RecordingsRepo;
 let engineResult: Result<string>;
 
 const engine: TranscriptionEngine = {
-  status: () => Promise.resolve({ kind: "online", url: "http://127.0.0.1:3900" }),
+  status: () => Promise.resolve({ kind: "online", engine: "voicestudio" }),
   transcribe: () => Promise.resolve(engineResult),
 };
 

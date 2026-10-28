@@ -25,7 +25,7 @@ function fakeDesktop(overrides: Partial<DesktopApi> = {}): DesktopApi {
     transcribe: async () => ({ success: true, data: transcribed }),
     updateTranscript: async ({ transcript }) => ({ success: true, data: { ...pending, transcript } }),
     deleteRecording: async (id) => ({ success: true, data: { id } }),
-    engineStatus: async () => ({ success: true, data: { kind: "online", url: "http://127.0.0.1:3900" } }),
+    engineStatus: async () => ({ success: true, data: { kind: "online", engine: "amharic-model" } }),
     ...overrides,
   };
 }

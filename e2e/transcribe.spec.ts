@@ -25,7 +25,7 @@ async function launch(
 ): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: [".", "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", ...extraArgs],
-    env: { ...process.env, VOICESTUDIO_URL: voiceStudioUrl, STT_USER_DATA_DIR: userData },
+    env: { ...process.env, STT_ENGINE: "voicestudio", VOICESTUDIO_URL: voiceStudioUrl, STT_USER_DATA_DIR: userData },
   });
   const page = await app.firstWindow();
   await page.setViewportSize({ width: 1120, height: 740 });

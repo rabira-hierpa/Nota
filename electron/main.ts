@@ -3,10 +3,12 @@ import path from "node:path";
 import { app, BrowserWindow, session } from "electron";
 import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
+import { AmharicModelEngine } from "@main/lib/amharic-model-engine";
 import { APP_ORIGIN, registerAppSchemePrivileges, serveStaticExport } from "@main/lib/app-protocol";
-import { readVoiceStudioConfig } from "@main/lib/config";
+import { readAmharicModelConfig, readEngineChoice, readVoiceStudioConfig } from "@main/lib/config";
 import { allowMicrophoneOnly } from "@main/lib/permissions";
 import { RecordingsRepo } from "@main/lib/recordings-repo";
+import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
 
@@ -26,6 +28,15 @@ if (!app.isPackaged) {
 }
 
 registerAppSchemePrivileges();
+
+function createEngine(): TranscriptionEngine {
+  if (readEngineChoice() === "voicestudio") return new VoiceStudioClient(readVoiceStudioConfig());
+  // The Python helper ships beside the app (extraResources) when packaged.
+  const helperDir = app.isPackaged
+    ? path.join(process.resourcesPath, "python")
+    : path.join(app.getAppPath(), "electron", "python");
+  return new AmharicModelEngine(readAmharicModelConfig({ userData: app.getPath("userData"), helperDir }));
+}
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -63,7 +74,8 @@ app
     allowMicrophoneOnly(session.defaultSession, trustedOrigin);
 
     const repo = new RecordingsRepo(path.join(app.getPath("userData"), "recordings"));
-    const engine = new VoiceStudioClient(readVoiceStudioConfig());
+    const engine = createEngine();
+    app.on("will-quit", () => engine.dispose?.());
     registerIpc(createDesktopHandlers(repo, engine), trustedOrigin);
 
     createWindow();

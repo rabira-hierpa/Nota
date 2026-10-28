@@ -3,7 +3,7 @@
   "productName": "Amharic Speech to Text",
   "version": "0.1.0",
   "private": true,
-  "description": "Record your voice and get Amharic text, transcribed locally by VoiceStudio.",
+  "description": "Record your voice and get Amharic text, transcribed locally on your machine.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n next,main,app -c green,blue,magenta \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:app\"",
@@ -17,7 +17,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "setup:amharic-model": "bash scripts/setup-amharic-model.sh"
   },
   "dependencies": {
     "@untitledui/icons": "^0.0.22",
@@ -59,6 +60,15 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Records your voice so it can be transcribed into Amharic text."
       }
-    }
+    },
+    "extraResources": [
+      {
+        "from": "electron/python",
+        "to": "python",
+        "filter": [
+          "*.py"
+        ]
+      }
+    ]
   }
 }

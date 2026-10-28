@@ -55,6 +55,30 @@ describe("transcribe", () => {
     expect(result).toEqual({ success: false, error: ENGINE_MESSAGES.noModel });
   });
 
+  it("asks for the model licence instead of blaming the API key (403 model_licence_required)", async () => {
+    // The body VoiceStudio 0.5.7 sent for a fine-tune whose licence wasn't accepted yet.
+    const url = await startEngine((_request, _body, response) =>
+      json(response, 403, {
+        error: {
+          message: "Licence not accepted for BuzzASR/amharic. Review and accept it in Model Catalogue.",
+          type: "permission_error",
+          param: "model",
+          code: "model_licence_required",
+        },
+      }),
+    );
+    const result = await new VoiceStudioClient({ baseUrl: url, apiKey: null }).transcribe(wav, "a.wav");
+    expect(result).toEqual({ success: false, error: ENGINE_MESSAGES.licence });
+  });
+
+  it("still reports a rejected key for a plain 403", async () => {
+    const url = await startEngine((_request, _body, response) =>
+      json(response, 403, { error: { message: "Forbidden", type: "permission_error" } }),
+    );
+    const result = await new VoiceStudioClient({ baseUrl: url, apiKey: "wrong" }).transcribe(wav, "a.wav");
+    expect(result).toEqual({ success: false, error: ENGINE_MESSAGES.badKey });
+  });
+
   it("passes the engine's own message through for other failures", async () => {
     const url = await startEngine((_request, _body, response) =>
       json(response, 400, { error: { message: "engine 'x' is not active" } }),
@@ -88,7 +112,7 @@ describe("status", () => {
         ? json(response, 200, { protocol: "voicestudio.speech.v1" })
         : json(response, 404, {}),
     );
-    expect(await new VoiceStudioClient({ baseUrl: url, apiKey: null }).status()).toEqual({ kind: "online", url });
+    expect(await new VoiceStudioClient({ baseUrl: url, apiKey: null }).status()).toEqual({ kind: "online", engine: "voicestudio" });
   });
 
   it("is offline when nothing listens", async () => {

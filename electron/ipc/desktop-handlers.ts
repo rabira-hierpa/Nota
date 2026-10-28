@@ -1,6 +1,6 @@
 import { RecordingNotFoundError } from "@main/lib/recordings-repo";
 import type { RecordingsRepo } from "@main/lib/recordings-repo";
-import type { TranscriptionEngine } from "@main/lib/voice-studio";
+import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import {
   createRecordingInputSchema,
   recordingIdSchema,
