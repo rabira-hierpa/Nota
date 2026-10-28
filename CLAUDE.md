@@ -1,9 +1,24 @@
 @AGENTS.md
 
-# Amharic Speech to Text
+# Nota
 
-Electron desktop app: record your voice, get Amharic text, edit it, play it
-back, or dictate and watch the text appear after each pause. The user picks a
+Electron desktop app for Amharic notes, modelled on Bear: a sidebar of
+sections (Notes, Favorites, Voice notes, Untagged, Trash) and `#tags` written
+in the text (nested with `/`), a note list with search, and a Tiptap 3
+rich-text editor with a font picker. Notes can be spoken: a recording becomes
+a voice note transcribed into its text, and Dictate types words at the cursor
+after each pause. The repo folder keeps its old name, amharic-stt.
+
+Notes live in `NotesRepo` (`electron/lib/notes-repo.ts`): one JSON file per
+note (`content` HTML for the editor plus `text` for titles, tags and search,
+`favorite`, `trashedAt`, optional `audio`) and a WAV beside it. Tags are not
+stored; `features/notes/lib/tags.ts` reads them from `text`, for the sidebar
+and for the editor's pill decorations alike. The data folder is
+`<appData>/Nota`; the first launch renames the pre-Nota folder ("Amharic
+Speech to Text": models, recordings, localStorage) and imports its recordings
+as notes once (`data-folder.ts`, `legacy-recordings.ts`).
+
+The user picks a speech
 model (`ModelId` in `shared/schemas/engine.ts`); main keeps one
 `TranscriptionEngine` (`electron/lib/transcription-engine.ts`) per model on
 offer:
@@ -25,12 +40,22 @@ only end-of-text; bfloat16 drifts; float32 needs 8 GB and swaps on a 16 GB
 Mac); its published generation config needs `_from_model_config` removed for
 transformers 5.x. Hohe prefixes its output with `[AMH]`, which the helper strips.
 
-Dictation (`stores/dictation-store.ts`): `lib/pcm-capture.ts` streams 16 kHz
-samples from `public/worklets/pcm-capture.js`, `lib/speech-segmenter.ts` cuts
-clips at 0.5 s pauses, each clip goes through `transcribeClip` (nothing
-stored), and Stop saves the recording with `dictated` text. Chromium's
+A transcription replaces a note's text in main (`setTranscription` →
+`transcriptToHtml`); the renderer bumps `textVersions[id]` so the editor
+remounts with it. Dictation (`stores/dictation-store.ts`): `lib/pcm-capture.ts`
+streams 16 kHz samples from `public/worklets/pcm-capture.js`,
+`lib/speech-segmenter.ts` cuts clips at 0.5 s pauses, each clip goes through
+`transcribeClip` (nothing stored) and is typed at the editor's cursor
+(`lib/insert-dictated.ts`, as a text node, never HTML); Stop keeps the audio
+with the note via `attachAudio` if it has none. If the editor closes
+mid-dictation, `detach` sends the last words to `appendText` instead. Chromium's
 `--use-file-for-fake-audio-capture` yields only silence under Electron, so the
 e2e dictation test fakes `getUserMedia` in the page (`e2e/phrases-microphone.ts`).
+
+Design: ui-ux-pro-max's "Minimalism & Swiss" with its notes-app palette (warm
+ink on paper) and Bear's red accent; semantic colour tokens in
+`src/styles/globals.css` switch for dark mode (`data-theme`, or the system).
+Interface font Plus Jakarta Sans; all fonts in `src/lib/fonts.ts`.
 
 Conventions are carried over from the Dandii app (`~/rz-codes/menged`):
 feature folders, one component per folder, Zustand stores, `@/` aliases,
@@ -40,7 +65,7 @@ strict TypeScript, typed results instead of thrown errors.
 
 ```
 electron/   main process (Node): window, app:// protocol, IPC handlers,
-            transcription engines, recordings on disk. Plays the "server" role.
+            transcription engines, notes on disk. Plays the "server" role.
   python/   the model helper (one JSON object per line on stdin/stdout);
             shipped as an extraResource, so it lives outside the asar.
 shared/     the IPC contract: channel names, Zod schemas, types. Imported by
@@ -53,7 +78,7 @@ e2e/        Playwright tests that drive the built Electron app.
 
 Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desktop.ts`)
 → `window.desktop` (`electron/preload.ts`) → IPC → `electron/ipc/desktop-handlers.ts`
-(Zod-validated) → `RecordingsRepo` / the chosen model's `TranscriptionEngine`.
+(Zod-validated) → `NotesRepo` / the chosen model's `TranscriptionEngine`.
 
 ## Commands
 

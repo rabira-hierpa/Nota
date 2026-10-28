@@ -1,24 +1,111 @@
 @import "tailwindcss";
 
-/* Tokens follow the Dandii palette: one green accent, quiet neutrals. Red is
-   reserved for the record control. */
+/*
+ * Nota's design system (ui-ux-pro-max: "Minimalism & Swiss Style", the
+ * "Notes & Writing App" palette: warm ink on paper). Bear's red replaces
+ * the palette's amber accent. Colours are semantic tokens that switch with
+ * the theme; components never use raw hex.
+ */
 @theme {
-  --font-sans: var(--font-inter), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
-  /* Amharic text: Noto Sans Ethiopic first so Ge'ez and its punctuation share
-     one face; Inter picks up any Latin. */
-  --font-ethiopic: var(--font-noto-ethiopic), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: var(--font-jakarta), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
+  /* Note text: Noto Sans Ethiopic first so Ge'ez and its punctuation share
+     one face; the interface font picks up any Latin. */
+  --font-ethiopic: var(--font-noto-ethiopic), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
+  --color-paper: var(--paper);
+  --color-sidebar: var(--sidebar);
+  --color-list: var(--list);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-mark: var(--mark);
+  --color-record: var(--record);
+  --color-online: var(--online);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+}
 
-  --color-ink: #1c2321;
-  --color-muted: #5c6b5e;
-  --color-line: #e3e8e4;
-  --color-panel: #f8f9fa;
-  --color-record: #dc2626;
+:root {
+  color-scheme: light;
+  --paper: #fbfaf8;
+  --sidebar: #f2f0ec;
+  --list: #f7f5f2;
+  --surface: #ffffff;
+  --ink: #24201c;
+  /* 4.9:1 on the sidebar, 5.4:1 on paper. */
+  --muted: #6e665e;
+  /* Decoration only (rules, idle icons); never body text. */
+  --faint: #a8a097;
+  --line: #e6e1da;
+  --hover: rgb(36 32 28 / 0.05);
+  --selected: #e9e4dd;
+  --accent: #d1453b;
+  /* Accent as text: 5.4:1 on the sidebar and on tag pills. */
+  --accent-ink: #b0322a;
+  --accent-soft: #fbe9e7;
+  --mark: #fcefb4;
+  --record: #dc2626;
+  --online: #2f7d4f;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --warn-ink: #78350f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #1c1b1a;
+    --sidebar: #232120;
+    --list: #1f1e1c;
+    --surface: #2a2826;
+    --ink: #ece8e2;
+    --muted: #a59d94;
+    --faint: #5f5953;
+    --line: #34312e;
+    --hover: rgb(236 232 226 / 0.06);
+    --selected: #302d2a;
+    --accent: #ef6a5f;
+    --accent-ink: #f4877e;
+    --accent-soft: rgb(239 106 95 / 0.16);
+    --mark: #5c4d16;
+    --record: #f05252;
+    --online: #5fbf86;
+    --warn: #f59e0b;
+    --warn-soft: rgb(245 158 11 / 0.14);
+    --warn-ink: #fcd34d;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1c1b1a;
+  --sidebar: #232120;
+  --list: #1f1e1c;
+  --surface: #2a2826;
+  --ink: #ece8e2;
+  --muted: #a59d94;
+  --faint: #5f5953;
+  --line: #34312e;
+  --hover: rgb(236 232 226 / 0.06);
+  --selected: #302d2a;
+  --accent: #ef6a5f;
+  --accent-ink: #f4877e;
+  --accent-soft: rgb(239 106 95 / 0.16);
+  --mark: #5c4d16;
+  --record: #f05252;
+  --online: #5fbf86;
+  --warn: #f59e0b;
+  --warn-soft: rgb(245 158 11 / 0.14);
+  --warn-ink: #fcd34d;
 }
 
 html,
@@ -31,8 +118,22 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand-600);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* The window has no title bar on macOS: these strips move it. */
+@utility drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+@utility no-drag {
+  -webkit-app-region: no-drag;
 }
 
 @keyframes record-pulse {
@@ -47,4 +148,175 @@ body {
 
 @utility animate-record-pulse {
   animation: record-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── The note editor (Tiptap / ProseMirror) ─────────────────────────────── */
+
+.nota-editor {
+  font-family: var(--font-ethiopic);
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--ink);
+  outline: none;
+  overflow-wrap: anywhere;
+}
+
+.nota-editor > * + * {
+  margin-top: 0.6em;
+}
+
+/* A new note starts with a heading for its title, as in Bear. */
+.nota-editor h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin-top: 1.1em;
+}
+
+.nota-editor h2 {
+  font-size: 1.35em;
+  font-weight: 650;
+  line-height: 1.35;
+  margin-top: 1em;
+}
+
+.nota-editor h3 {
+  font-size: 1.12em;
+  font-weight: 650;
+  margin-top: 0.9em;
+}
+
+.nota-editor > :first-child:is(h1, h2, h3) {
+  margin-top: 0;
+}
+
+.nota-editor ul,
+.nota-editor ol {
+  padding-left: 1.4em;
+}
+
+.nota-editor ul {
+  list-style: disc;
+}
+
+.nota-editor ol {
+  list-style: decimal;
+}
+
+.nota-editor li > p {
+  margin: 0;
+}
+
+.nota-editor li::marker {
+  color: var(--accent);
+}
+
+.nota-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.1em;
+}
+
+.nota-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+}
+
+.nota-editor ul[data-type="taskList"] li > label {
+  flex: none;
+  margin-top: 0.42em;
+  user-select: none;
+}
+
+.nota-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.nota-editor ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1em;
+  height: 1em;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.nota-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.nota-editor blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1em;
+  color: var(--muted);
+}
+
+.nota-editor code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--hover);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
+
+.nota-editor pre {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  line-height: 1.6;
+  background: var(--sidebar);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+}
+
+.nota-editor pre code {
+  background: none;
+  padding: 0;
+}
+
+.nota-editor hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.6em 0;
+}
+
+.nota-editor a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.nota-editor mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.1em;
+}
+
+.nota-editor .nota-tag {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-radius: 5px;
+  padding: 0.05em 0.3em;
+  font-weight: 550;
+}
+
+.nota-editor .is-empty:is(p, h1, h2, h3)::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

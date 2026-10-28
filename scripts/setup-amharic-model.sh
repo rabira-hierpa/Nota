@@ -25,7 +25,14 @@
 set -euo pipefail
 
 VS_PYTHON="${VOICESTUDIO_PYTHON:-$HOME/Library/Application Support/VoiceStudio/runtime/project/.venv/bin/python}"
-MODELS_DIR="$HOME/Library/Application Support/Amharic Speech to Text/models"
+# Nota's data folder. Before the rename it was "Amharic Speech to Text"; until
+# Nota's first launch moves it across (electron/lib/data-folder.ts), set up there.
+APP_SUPPORT="$HOME/Library/Application Support"
+if [[ ! -d "$APP_SUPPORT/Nota" && -d "$APP_SUPPORT/Amharic Speech to Text" ]]; then
+  MODELS_DIR="$APP_SUPPORT/Amharic Speech to Text/models"
+else
+  MODELS_DIR="$APP_SUPPORT/Nota/models"
+fi
 
 if [[ ! -x "$VS_PYTHON" ]]; then
   echo "VoiceStudio's Python runtime wasn't found at $VS_PYTHON." >&2

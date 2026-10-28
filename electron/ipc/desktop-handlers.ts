@@ -1,22 +1,28 @@
-import { RecordingNotFoundError } from "@main/lib/recordings-repo";
-import type { RecordingsRepo } from "@main/lib/recordings-repo";
+import { NoteNotFoundError, NoteStateError } from "@main/lib/notes-repo";
+import type { NotesRepo } from "@main/lib/notes-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { modelIdSchema } from "@shared/schemas/engine";
 import {
-  createRecordingInputSchema,
-  recordingIdSchema,
+  attachAudioInputSchema,
+  createNoteInputSchema,
+  createVoiceNoteInputSchema,
+  noteIdSchema,
+  setFavoriteInputSchema,
+  setTrashedInputSchema,
   transcribeClipInputSchema,
   transcribeInputSchema,
-  updateTranscriptInputSchema,
-} from "@shared/schemas/recording";
+  updateNoteContentInputSchema,
+} from "@shared/schemas/note";
 import type { DesktopApi } from "@shared/types/desktop-api";
 import type { ModelId } from "@shared/types/engine";
-import type { Recording, TranscribeInput } from "@shared/types/recording";
+import type { Note, TranscribeInput } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
+import type { z } from "zod";
 
 export const HANDLER_ERRORS = {
   invalid: "That request wasn't valid.",
-  notFound: "That recording no longer exists.",
+  notFound: "That note no longer exists.",
+  state: "That can't be done to this note right now.",
   noModel: "That speech model isn't available. Pick another one.",
   generic: "Something went wrong. Try again.",
 } as const;
@@ -31,7 +37,7 @@ const CLIP_FILE_NAME = "dictation.wav";
  * The main-process side of `window.desktop`. Arguments are typed by the
  * contract but arrive from another process, so every one is parsed again.
  */
-export function createDesktopHandlers(repo: RecordingsRepo, engines: Engines): DesktopApi {
+export function createDesktopHandlers(repo: NotesRepo, engines: Engines): DesktopApi {
   /** The engine about to run; the others let go of their memory while idle. */
   function engineFor(model: ModelId): TranscriptionEngine | null {
     const engine = engines.get(model);
@@ -42,23 +48,36 @@ export function createDesktopHandlers(repo: RecordingsRepo, engines: Engines): D
     return engine;
   }
 
-  async function transcribe(engine: TranscriptionEngine, { id, model }: TranscribeInput): Promise<Recording> {
+  async function transcribe(engine: TranscriptionEngine, { id, model }: TranscribeInput): Promise<Note> {
     const audio = await repo.readAudio(id);
     const result = await engine.transcribe(audio, `${id}.wav`);
-    // An engine failure is part of the recording's state, not an IPC failure:
-    // the renderer shows the message next to the recording.
+    // An engine failure is part of the note's state, not an IPC failure: the
+    // renderer shows the message on the note.
     return result.success
       ? repo.setTranscription(id, { status: "done", transcribedAt: new Date().toISOString(), model }, result.data)
       : repo.setTranscription(id, { status: "error", message: result.error.slice(0, MAX_STORED_ERROR_LENGTH) });
   }
 
   return {
-    listRecordings: () => attempt(() => repo.list()),
-    createRecording: (input) => {
-      const parsed = createRecordingInputSchema.safeParse(input);
-      return parsed.success ? attempt(() => repo.create(parsed.data)) : invalid();
-    },
-    readAudio: (id) => withId(id, (valid) => repo.readAudio(valid)),
+    listNotes: () => attempt(() => repo.list()),
+    createNote: (input) => withValid(createNoteInputSchema, input, (valid) => repo.create(valid)),
+    createVoiceNote: (input) => withValid(createVoiceNoteInputSchema, input, (valid) => repo.createVoice(valid)),
+    updateNoteContent: (input) =>
+      withValid(updateNoteContentInputSchema, input, ({ id, content, text }) => repo.updateContent(id, { content, text })),
+    setFavorite: (input) =>
+      withValid(setFavoriteInputSchema, input, ({ id, favorite }) => repo.setFavorite(id, favorite)),
+    setTrashed: (input) => withValid(setTrashedInputSchema, input, ({ id, trashed }) => repo.setTrashed(id, trashed)),
+    deleteNote: (id) =>
+      withValid(noteIdSchema, id, async (valid) => {
+        await repo.remove(valid);
+        return { id: valid };
+      }),
+    emptyTrash: () => attempt(async () => ({ ids: await repo.emptyTrash() })),
+    attachAudio: (input) =>
+      withValid(attachAudioInputSchema, input, ({ id, audio, durationMs, transcribedBy }) =>
+        repo.attachAudio(id, { audio, durationMs }, transcribedBy),
+      ),
+    readAudio: (id) => withValid(noteIdSchema, id, (valid) => repo.readAudio(valid)),
     transcribe: (input) => {
       const parsed = transcribeInputSchema.safeParse(input);
       if (!parsed.success) return invalid();
@@ -71,17 +90,6 @@ export function createDesktopHandlers(repo: RecordingsRepo, engines: Engines): D
       const engine = engineFor(parsed.data.model);
       return engine ? engine.transcribe(parsed.data.audio, CLIP_FILE_NAME) : unavailable();
     },
-    updateTranscript: (input) => {
-      const parsed = updateTranscriptInputSchema.safeParse(input);
-      return parsed.success
-        ? attempt(() => repo.updateTranscript(parsed.data.id, parsed.data.transcript))
-        : invalid();
-    },
-    deleteRecording: (id) =>
-      withId(id, async (valid) => {
-        await repo.remove(valid);
-        return { id: valid };
-      }),
     listModels: () =>
       attempt(() =>
         Promise.all([...engines].map(async ([model, engine]) => ({ model, ...(await engine.status()) }))),
@@ -97,8 +105,12 @@ export function createDesktopHandlers(repo: RecordingsRepo, engines: Engines): D
   };
 }
 
-function withId<T>(id: string, task: (id: string) => Promise<T>): Promise<Result<T>> {
-  const parsed = recordingIdSchema.safeParse(id);
+function withValid<S extends z.ZodType, T>(
+  schema: S,
+  input: z.input<S>,
+  task: (valid: z.output<S>) => Promise<T>,
+): Promise<Result<T>> {
+  const parsed = schema.safeParse(input);
   return parsed.success ? attempt(() => task(parsed.data)) : invalid();
 }
 
@@ -106,9 +118,8 @@ async function attempt<T>(task: () => Promise<T>): Promise<Result<T>> {
   try {
     return { success: true, data: await task() };
   } catch (error) {
-    if (error instanceof RecordingNotFoundError) {
-      return { success: false, error: HANDLER_ERRORS.notFound };
-    }
+    if (error instanceof NoteNotFoundError) return { success: false, error: HANDLER_ERRORS.notFound };
+    if (error instanceof NoteStateError) return { success: false, error: HANDLER_ERRORS.state };
     console.error("[ipc] handler failed:", error instanceof Error ? error.message : error);
     return { success: false, error: HANDLER_ERRORS.generic };
   }

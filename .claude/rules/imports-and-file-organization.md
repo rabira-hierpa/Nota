@@ -13,13 +13,13 @@ paths:
 - **One component per file — no exceptions.** Every component gets its own folder:
 
   ```
-  src/features/transcriber/components/audio-player/
-    audio-player.tsx        # the component, named export
-    audio-player.types.ts   # props + local types (only if non-trivial)
+  src/features/notes/components/audio-bar/
+    audio-bar.tsx           # the component, named export
+    audio-bar.types.ts      # props + local types (only if non-trivial)
     index.ts                # re-export
   ```
 
   If a file's second component exists only to keep a `useEffect` local, that is a hook, not a component — extract it to the feature's `hooks/`.
 
-- **Types live in a `types/` folder, one domain per file.** IPC types in `shared/types/` (`recording.ts`, `engine.ts`); renderer types shared across features in `src/types/`; one feature's types in `src/features/<name>/types/`. Only a component's own props stay beside it.
+- **Types live in a `types/` folder, one domain per file.** IPC types in `shared/types/` (`note.ts`, `engine.ts`); renderer types shared across features in `src/types/`; one feature's types in `src/features/<name>/types/`. Only a component's own props stay beside it.
   - Types derived from a schema are never re-declared by hand — infer them (`z.infer`) and re-export from the types folder.

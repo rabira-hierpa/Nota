@@ -1,9 +1,9 @@
 {
-  "name": "amharic-stt",
-  "productName": "Amharic Speech to Text",
+  "name": "nota",
+  "productName": "Nota",
   "version": "0.1.0",
   "private": true,
-  "description": "Record your voice and get Amharic text, transcribed locally on your machine.",
+  "description": "Amharic notes you can write or speak, transcribed locally on your machine.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n next,main,app -c green,blue,magenta \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:app\"",
@@ -21,6 +21,14 @@
     "setup:amharic-model": "bash scripts/setup-amharic-model.sh"
   },
   "dependencies": {
+    "@tiptap/core": "3.32.0",
+    "@tiptap/extension-highlight": "3.32.0",
+    "@tiptap/extension-list": "3.32.0",
+    "@tiptap/extension-text-style": "3.32.0",
+    "@tiptap/extensions": "3.32.0",
+    "@tiptap/pm": "3.32.0",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
     "@untitledui/icons": "^0.0.22",
     "next": "16.4.3",
     "react": "19.3.1",
@@ -48,8 +56,8 @@
     "wait-on": "^9.5.1"
   },
   "build": {
-    "appId": "com.rzcodes.amharic-stt",
-    "productName": "Amharic Speech to Text",
+    "appId": "com.rzcodes.nota",
+    "productName": "Nota",
     "files": [
       "dist-electron/**",
       "out/**",
@@ -58,7 +66,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Records your voice so it can be transcribed into Amharic text."
+        "NSMicrophoneUsageDescription": "Nota listens while you record or dictate, to turn your speech into Amharic text."
       }
     },
     "extraResources": [

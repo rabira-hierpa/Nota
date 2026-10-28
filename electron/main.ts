@@ -1,13 +1,15 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, session } from "electron";
+import { app, BrowserWindow, nativeTheme, session } from "electron";
 import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
 import { AmharicModelEngine } from "@main/lib/amharic-model-engine";
 import { APP_ORIGIN, registerAppSchemePrivileges, serveStaticExport } from "@main/lib/app-protocol";
 import { readAvailableModels, readLocalModelConfig, readVoiceStudioConfig } from "@main/lib/config";
+import { resolveDataFolder } from "@main/lib/data-folder";
+import { importLegacyRecordings } from "@main/lib/legacy-recordings";
+import { NotesRepo } from "@main/lib/notes-repo";
 import { allowMicrophoneOnly } from "@main/lib/permissions";
-import { RecordingsRepo } from "@main/lib/recordings-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
@@ -18,10 +20,14 @@ import type { ModelId } from "@shared/types/engine";
 const devRendererUrl = process.env.ELECTRON_RENDERER_URL;
 const trustedOrigin = (devRendererUrl && originOf(devRendererUrl)) || APP_ORIGIN;
 
-// Lets e2e tests (and anyone keeping test data apart) use a throwaway profile.
-if (process.env.STT_USER_DATA_DIR) {
-  app.setPath("userData", process.env.STT_USER_DATA_DIR);
-}
+const APP_NAME = "Nota";
+// Matches the editor's paper colour in each theme, so the window never flashes white.
+const BACKGROUND = { light: "#fbfaf8", dark: "#1c1b1a" } as const;
+
+// Lets e2e tests (and anyone keeping test data apart) use a throwaway
+// profile, or a throwaway parent folder to exercise the move from the old name.
+if (process.env.STT_APP_DATA_DIR) app.setPath("appData", process.env.STT_APP_DATA_DIR);
+app.setPath("userData", process.env.STT_USER_DATA_DIR || resolveDataFolder(app.getPath("appData")));
 
 if (!app.isPackaged) {
   const envFile = path.join(app.getAppPath(), ".env");
@@ -45,8 +51,12 @@ function createWindow(): void {
     height: 740,
     minWidth: 760,
     minHeight: 480,
-    title: "Amharic Speech to Text",
-    backgroundColor: "#ffffff",
+    title: APP_NAME,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? BACKGROUND.dark : BACKGROUND.light,
+    // Bear-style: the traffic lights sit in the sidebar, which doubles as the title bar.
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 18, y: 18 } }
+      : {}),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -68,13 +78,26 @@ function createWindow(): void {
   });
 }
 
+async function openNotes(): Promise<NotesRepo> {
+  const userData = app.getPath("userData");
+  const repo = new NotesRepo(path.join(userData, "notes"));
+  try {
+    const imported = await importLegacyRecordings(path.join(userData, "recordings"), repo);
+    if (imported > 0) console.info(`[main] turned ${imported} recordings into notes`);
+  } catch (error) {
+    // The recordings stay where they are; the import runs again next launch.
+    console.error("[main] couldn't import the old recordings:", error instanceof Error ? error.message : error);
+  }
+  return repo;
+}
+
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     if (!devRendererUrl) serveStaticExport(path.join(app.getAppPath(), "out"));
     allowMicrophoneOnly(session.defaultSession, trustedOrigin);
 
-    const repo = new RecordingsRepo(path.join(app.getPath("userData"), "recordings"));
+    const repo = await openNotes();
     const engines = new Map(readAvailableModels().map((model) => [model, createEngine(model)] as const));
     app.on("will-quit", () => engines.forEach((engine) => engine.dispose?.()));
     registerIpc(createDesktopHandlers(repo, engines), trustedOrigin);
