@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SILENT_PEAK } from "@/features/transcriber/lib/audio-level";
 import { microphoneErrorMessage, silentRecordingMessage } from "@/features/transcriber/lib/microphone-error";
+import { audioConstraints } from "@/features/transcriber/lib/microphones";
 import { toMonoWav } from "@/features/transcriber/lib/to-mono-wav";
 import type { Microphone } from "@/features/transcriber/types/microphone";
 import { MAX_DURATION_MS } from "@shared/schemas/recording";
@@ -79,14 +80,7 @@ export function useRecorder(
     const chosen = microphoneRef.current;
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: chosen ? { exact: chosen.id } : undefined,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints(chosen) });
     } catch (error) {
       setState({ kind: "error", message: microphoneErrorMessage(error instanceof DOMException ? error.name : "") });
       return;

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AMHARIC_MESSAGES, AmharicModelEngine } from "@main/lib/amharic-model-engine";
+import { AmharicModelEngine, amharicMessages } from "@main/lib/amharic-model-engine";
 import type { HelperTimeouts } from "@main/lib/amharic-model-engine";
 
 // Stands in for `python -I amharic_transcriber.py <model_dir>`: same line
@@ -33,6 +33,7 @@ if (mode() === "never-ready") {
 `;
 
 const audio = new Uint8Array([1, 2, 3, 4]);
+const AMHARIC_MESSAGES = amharicMessages("buzzasr");
 const quick: HelperTimeouts = { loadMs: 3000, transcribeMs: 3000, idleMs: 60_000 };
 
 let dir: string;
@@ -50,9 +51,11 @@ async function helperStarts(): Promise<number> {
 function makeEngine(timeouts: HelperTimeouts = quick): AmharicModelEngine {
   engine = new AmharicModelEngine(
     {
+      model: "buzzasr",
       python: path.join(dir, "fake-python"),
       script: path.join(dir, "amharic_transcriber.py"),
       modelDir,
+      requiredFiles: ["model.safetensors", "generation_config.json"],
     },
     timeouts,
   );
@@ -79,14 +82,11 @@ afterEach(async () => {
 
 describe("AmharicModelEngine", () => {
   it("is ready once the model folder exists, and says how to set it up otherwise", async () => {
-    expect(await makeEngine().status()).toEqual({ kind: "online", engine: "amharic-model" });
+    expect(await makeEngine().status()).toEqual({ kind: "online" });
 
     await rm(path.join(modelDir, "model.safetensors"));
-    expect(await engine.status()).toEqual({
-      kind: "offline",
-      engine: "amharic-model",
-      reason: AMHARIC_MESSAGES.notSetUp,
-    });
+    expect(await engine.status()).toEqual({ kind: "offline", reason: AMHARIC_MESSAGES.notSetUp });
+    expect(AMHARIC_MESSAGES.notSetUp).toMatch(/^BuzzASR isn't set up/);
     expect(await engine.transcribe(audio, "a.wav")).toEqual({ success: false, error: AMHARIC_MESSAGES.notSetUp });
     expect(await helperStarts()).toBe(0);
   });
@@ -133,6 +133,30 @@ describe("AmharicModelEngine", () => {
     await setMode("hang");
     const result = await makeEngine({ ...quick, transcribeMs: 300 }).transcribe(audio, "a.wav");
     expect(result).toEqual({ success: false, error: AMHARIC_MESSAGES.timedOut });
+  });
+
+  it("loads the model ahead of the first request when asked", async () => {
+    makeEngine().prepare();
+    await vi.waitFor(async () => expect(await helperStarts()).toBe(1));
+
+    await engine.transcribe(audio, "a.wav");
+    expect(await helperStarts()).toBe(1);
+  });
+
+  it("frees an idle model when another is chosen, but never one at work", async () => {
+    makeEngine();
+    await engine.transcribe(audio, "a.wav");
+    engine.release();
+
+    await setMode("hang");
+    const working = engine.transcribe(audio, "b.wav");
+    await vi.waitFor(async () => expect(await helperStarts()).toBe(2));
+    engine.release();
+    const outcome = await Promise.race([
+      working.then(() => "settled"),
+      new Promise((resolve) => setTimeout(() => resolve("still working"), 300)),
+    ]);
+    expect(outcome).toBe("still working");
   });
 
   it("releases the model after it has been idle", async () => {

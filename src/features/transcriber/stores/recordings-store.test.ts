@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEngineStore } from "@/features/transcriber/stores/engine-store";
 import { useRecordingsStore } from "@/features/transcriber/stores/recordings-store";
 import { DESKTOP_ERRORS } from "@/lib/desktop";
 import type { DesktopApi } from "@shared/types/desktop-api";
@@ -14,7 +15,7 @@ const pending: Recording = {
 const transcribed: Recording = {
   ...pending,
   transcript: "ሰላም ዓለም",
-  transcription: { status: "done", transcribedAt: "2026-10-28T09:00:05.000Z" },
+  transcription: { status: "done", transcribedAt: "2026-10-28T09:00:05.000Z", model: "hohe" },
 };
 
 function fakeDesktop(overrides: Partial<DesktopApi> = {}): DesktopApi {
@@ -23,17 +24,45 @@ function fakeDesktop(overrides: Partial<DesktopApi> = {}): DesktopApi {
     createRecording: async () => ({ success: true, data: pending }),
     readAudio: async () => ({ success: true, data: new Uint8Array([1, 2, 3]) }),
     transcribe: async () => ({ success: true, data: transcribed }),
+    transcribeClip: async () => ({ success: true, data: "ሰላም" }),
     updateTranscript: async ({ transcript }) => ({ success: true, data: { ...pending, transcript } }),
     deleteRecording: async (id) => ({ success: true, data: { id } }),
-    engineStatus: async () => ({ success: true, data: { kind: "online", engine: "amharic-model" } }),
+    listModels: async () => ({
+      success: true,
+      data: [
+        { model: "hohe", kind: "online" },
+        { model: "buzzasr", kind: "online" },
+      ],
+    }),
+    prepareModel: async () => ({ success: true, data: null }),
     ...overrides,
   };
 }
 
-beforeEach(() => useRecordingsStore.setState(useRecordingsStore.getInitialState()));
+beforeEach(() => {
+  useRecordingsStore.setState(useRecordingsStore.getInitialState());
+  useEngineStore.setState({
+    state: { kind: "ready", models: [{ model: "hohe", kind: "online" }, { model: "buzzasr", kind: "online" }] },
+    chosen: null,
+  });
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("add", () => {
+  it("doesn't transcribe a dictated recording again", async () => {
+    const transcribe = vi.fn();
+    vi.stubGlobal("window", { desktop: fakeDesktop({ createRecording: async () => ({ success: true, data: transcribed }), transcribe }) });
+
+    await useRecordingsStore.getState().add({
+      audio: new Uint8Array(100),
+      durationMs: 2000,
+      dictated: { transcript: "ሰላም ዓለም", model: "hohe" },
+    });
+
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(useRecordingsStore.getState().selectedId).toBe(transcribed.id);
+  });
+
   it("saves, selects, loads the audio and transcribes the new recording", async () => {
     vi.stubGlobal("window", { desktop: fakeDesktop() });
 
@@ -44,6 +73,39 @@ describe("add", () => {
     expect(state.selectedId).toBe(pending.id);
     expect(state.audio?.recordingId).toBe(pending.id);
     expect(state.recordings).toEqual([transcribed]);
+  });
+});
+
+describe("transcribe", () => {
+  it("uses the model the user picked", async () => {
+    const transcribe = vi.fn(async () => ({ success: true as const, data: transcribed }));
+    vi.stubGlobal("window", { desktop: fakeDesktop({ transcribe }) });
+    useEngineStore.setState({ chosen: "buzzasr" });
+
+    await useRecordingsStore.getState().transcribe(pending.id);
+
+    expect(transcribe).toHaveBeenCalledWith({ id: pending.id, model: "buzzasr" });
+  });
+
+  it("falls back to the first model on offer when the saved pick is gone", async () => {
+    const transcribe = vi.fn(async () => ({ success: true as const, data: transcribed }));
+    vi.stubGlobal("window", { desktop: fakeDesktop({ transcribe }) });
+    useEngineStore.setState({ chosen: "voicestudio" });
+
+    await useRecordingsStore.getState().transcribe(pending.id);
+
+    expect(transcribe).toHaveBeenCalledWith({ id: pending.id, model: "hohe" });
+  });
+
+  it("explains when no model is available instead of calling the engine", async () => {
+    const transcribe = vi.fn();
+    vi.stubGlobal("window", { desktop: fakeDesktop({ transcribe }) });
+    useEngineStore.setState({ state: { kind: "unreachable", reason: "no app" } });
+
+    await useRecordingsStore.getState().transcribe(pending.id);
+
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(useRecordingsStore.getState().actionError).toMatch(/No speech model/);
   });
 });
 

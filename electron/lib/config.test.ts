@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import {
-  AMHARIC_MODEL_FOLDER,
   DEFAULT_VOICESTUDIO_URL,
-  readAmharicModelConfig,
-  readEngineChoice,
+  LOCAL_MODELS,
+  readAvailableModels,
+  readLocalModelConfig,
   readVoiceStudioConfig,
 } from "@main/lib/config";
 
@@ -25,26 +25,30 @@ describe("readVoiceStudioConfig", () => {
   });
 });
 
-describe("readEngineChoice", () => {
-  it("uses the Amharic model unless VoiceStudio is asked for", () => {
-    expect(readEngineChoice({})).toBe("amharic-model");
-    expect(readEngineChoice({ STT_ENGINE: "something-else" })).toBe("amharic-model");
-    expect(readEngineChoice({ STT_ENGINE: " voicestudio " })).toBe("voicestudio");
+describe("readAvailableModels", () => {
+  it("offers the local Amharic models, fastest first, unless VoiceStudio is asked for", () => {
+    expect(readAvailableModels({})).toEqual(["hohe", "buzzasr"]);
+    expect(readAvailableModels({ STT_ENGINE: "something-else" })).toEqual(["hohe", "buzzasr"]);
+    expect(readAvailableModels({ STT_ENGINE: " voicestudio " })).toEqual(["voicestudio"]);
   });
 });
 
-describe("readAmharicModelConfig", () => {
+describe("readLocalModelConfig", () => {
   const places = { userData: "/data", helperDir: "/app/python" };
 
-  it("finds the helper beside the app and the model in user data", () => {
-    const config = readAmharicModelConfig(places, {});
-    expect(config.script).toBe(path.join("/app/python", "amharic_transcriber.py"));
-    expect(config.modelDir).toBe(path.join("/data", "models", AMHARIC_MODEL_FOLDER));
-    expect(config.python).toMatch(/VoiceStudio\/runtime\/project\/\.venv\/bin\/python$/);
+  it("finds the helper beside the app and each model in user data", () => {
+    const hohe = readLocalModelConfig("hohe", places, {});
+    expect(hohe.script).toBe(path.join("/app/python", "amharic_transcriber.py"));
+    expect(hohe.modelDir).toBe(path.join("/data", "models", LOCAL_MODELS.hohe.folder));
+    expect(hohe.python).toMatch(/VoiceStudio\/runtime\/project\/\.venv\/bin\/python$/);
+    expect(readLocalModelConfig("buzzasr", places, {}).modelDir).toBe(
+      path.join("/data", "models", LOCAL_MODELS.buzzasr.folder),
+    );
   });
 
-  it("honours overrides", () => {
-    const config = readAmharicModelConfig(places, { VOICESTUDIO_PYTHON: "/py", AMHARIC_MODEL_DIR: "/model" });
-    expect([config.python, config.modelDir]).toEqual(["/py", "/model"]);
+  it("honours overrides per model", () => {
+    const env = { VOICESTUDIO_PYTHON: "/py", HOHE_MODEL_DIR: "/hohe", BUZZASR_MODEL_DIR: "/buzz" };
+    expect(readLocalModelConfig("hohe", places, env)).toMatchObject({ python: "/py", modelDir: "/hohe" });
+    expect(readLocalModelConfig("buzzasr", places, env).modelDir).toBe("/buzz");
   });
 });

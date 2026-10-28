@@ -37,3 +37,13 @@ export function chooseMicrophone(microphones: readonly Microphone[], savedId: st
     microphones[0];
   return preferred?.id ?? null;
 }
+
+/** What both the recorder and dictation ask getUserMedia for. */
+export function audioConstraints(microphone: Microphone | null): MediaTrackConstraints {
+  return {
+    deviceId: microphone ? { exact: microphone.id } : undefined,
+    channelCount: 1,
+    echoCancellation: true,
+    noiseSuppression: true,
+  };
+}

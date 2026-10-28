@@ -56,10 +56,10 @@ export class VoiceStudioClient implements TranscriptionEngine {
         signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
       });
       return response.ok
-        ? { kind: "online", engine: "voicestudio" }
-        : { kind: "offline", engine: "voicestudio", reason: `VoiceStudio answered with HTTP ${response.status}.` };
+        ? { kind: "online" }
+        : { kind: "offline", reason: `VoiceStudio answered with HTTP ${response.status}.` };
     } catch {
-      return { kind: "offline", engine: "voicestudio", reason: ENGINE_MESSAGES.notRunning };
+      return { kind: "offline", reason: ENGINE_MESSAGES.notRunning };
     }
   }
 

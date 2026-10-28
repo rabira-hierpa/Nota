@@ -3,21 +3,34 @@
 # Amharic Speech to Text
 
 Electron desktop app: record your voice, get Amharic text, edit it, play it
-back. Two transcription engines implement `TranscriptionEngine`
-(`electron/lib/transcription-engine.ts`), picked by `STT_ENGINE`:
+back, or dictate and watch the text appear after each pause. The user picks a
+model (`ModelId` in `shared/schemas/engine.ts`); main keeps one
+`TranscriptionEngine` (`electron/lib/transcription-engine.ts`) per model on
+offer:
 
-- `amharic-model` (default): `AmharicModelEngine` runs BuzzASR/amharic (a
-  Whisper large-v3 Amharic fine-tune) through `electron/python/amharic_transcriber.py`
-  on VoiceStudio's installed Python runtime. Set up with `npm run setup:amharic-model`.
-- `voicestudio`: `VoiceStudioClient` posts to [VoiceStudio](https://github.com/debpalash/VoiceStudio)'s
+- `hohe` (default) and `buzzasr`: `AmharicModelEngine` runs
+  snapwre/hohe-asr-amharic (wav2vec2-BERT CTC) or BuzzASR/amharic (Whisper
+  large-v3 fine-tune) through `electron/python/amharic_transcriber.py` on
+  VoiceStudio's installed Python runtime. Set up with `npm run setup:amharic-model`.
+  Using one model releases the other's helper (memory).
+- `voicestudio` (only when `STT_ENGINE=voicestudio`, as in e2e):
+  `VoiceStudioClient` posts to [VoiceStudio](https://github.com/debpalash/VoiceStudio)'s
   OpenAI-compatible API (`POST :3900/v1/audio/transcriptions`, `language=am`).
 
-Hard-won constraints for the Amharic model (see the README for evidence):
-stock Whisper can't do Amharic (~193% CER); the fine-tune must decode in
-float32 (fp16/bf16 on MPS return only end-of-text) and without timestamps
-(it was trained text-only, which is also why VoiceStudio's engines can't run
-it); its published generation config needs `_from_model_config` removed for
-transformers 5.x.
+Hard-won constraints (see the README for evidence): stock Whisper can't do
+Amharic (~193% CER); BuzzASR must decode without timestamps (trained
+text-only, which is also why VoiceStudio's engines can't run it) and, on MPS,
+in float16 with `attn_implementation="eager"` (SDPA in half precision returns
+only end-of-text; bfloat16 drifts; float32 needs 8 GB and swaps on a 16 GB
+Mac); its published generation config needs `_from_model_config` removed for
+transformers 5.x. Hohe prefixes its output with `[AMH]`, which the helper strips.
+
+Dictation (`stores/dictation-store.ts`): `lib/pcm-capture.ts` streams 16 kHz
+samples from `public/worklets/pcm-capture.js`, `lib/speech-segmenter.ts` cuts
+clips at 0.5 s pauses, each clip goes through `transcribeClip` (nothing
+stored), and Stop saves the recording with `dictated` text. Chromium's
+`--use-file-for-fake-audio-capture` yields only silence under Electron, so the
+e2e dictation test fakes `getUserMedia` in the page (`e2e/phrases-microphone.ts`).
 
 Conventions are carried over from the Dandii app (`~/rz-codes/menged`):
 feature folders, one component per folder, Zustand stores, `@/` aliases,
@@ -34,12 +47,13 @@ shared/     the IPC contract: channel names, Zod schemas, types. Imported by
             both processes, depends on neither.
 src/        Next.js renderer, built as a static export (out/) and loaded over
             app://bundle in production, or from `next dev` on :3123 in dev.
+public/     static files served as-is, e.g. the dictation AudioWorklet.
 e2e/        Playwright tests that drive the built Electron app.
 ```
 
 Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desktop.ts`)
 → `window.desktop` (`electron/preload.ts`) → IPC → `electron/ipc/desktop-handlers.ts`
-(Zod-validated) → `RecordingsRepo` / the active `TranscriptionEngine`.
+(Zod-validated) → `RecordingsRepo` / the chosen model's `TranscriptionEngine`.
 
 ## Commands
 
@@ -51,7 +65,7 @@ Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desk
 | `npm run typecheck` / `npm run lint` / `npm test` | Checks (all must pass) |
 | `npm run test:e2e` | Build, then drive the app with a fake mic and a fake VoiceStudio |
 | `npm run package` | Build a distributable with electron-builder |
-| `npm run setup:amharic-model` | Download the pinned model and build its corrected folder |
+| `npm run setup:amharic-model [-- hohe\|buzzasr]` | Download the pinned models and build their folders |
 
 ## Rules
 

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useEngineStore } from "@/features/transcriber/stores/engine-store";
+import { selectedModel, useEngineStore } from "@/features/transcriber/stores/engine-store";
 import { invokeDesktop } from "@/lib/desktop";
 import type { CreateRecordingInput, Recording } from "@shared/types/recording";
 import type { Result } from "@shared/types/result";
@@ -35,6 +35,7 @@ interface RecordingsStore {
 }
 
 const WAV_TYPE = "audio/wav";
+const NO_MODEL = "No speech model is available yet. Check the status at the bottom of the sidebar.";
 
 function replaceRecording(recordings: Recording[], next: Recording): Recording[] {
   return recordings.map((recording) => (recording.id === next.id ? next : recording));
@@ -85,21 +86,27 @@ export const useRecordingsStore = create<RecordingsStore>()((set, get) => ({
     if (!result.success) return result;
     set((state) => ({ recordings: [result.data, ...state.recordings], actionError: null }));
     await get().select(result.data.id);
-    void get().transcribe(result.data.id);
+    // A dictated recording arrives already transcribed.
+    if (result.data.transcription.status === "pending") void get().transcribe(result.data.id);
     return result;
   },
 
   transcribe: async (id) => {
     if (get().transcribingIds.includes(id)) return;
+    const model = selectedModel(useEngineStore.getState())?.model;
+    if (!model) {
+      set({ actionError: NO_MODEL });
+      return;
+    }
     set((state) => ({ transcribingIds: [...state.transcribingIds, id], actionError: null }));
-    const result = await invokeDesktop((api) => api.transcribe(id));
+    const result = await invokeDesktop((api) => api.transcribe({ id, model }));
     set((state) => ({
       transcribingIds: state.transcribingIds.filter((pending) => pending !== id),
       ...(result.success
         ? { recordings: replaceRecording(state.recordings, result.data) }
         : { actionError: result.error }),
     }));
-    // A failed run usually means VoiceStudio went away; refresh the indicator.
+    // A failed run usually means the engine went away; refresh the indicator.
     if (!result.success || result.data.transcription.status === "error") {
       void useEngineStore.getState().check();
     }

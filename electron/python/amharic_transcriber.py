@@ -3,42 +3,35 @@
 
 usage: python -I amharic_transcriber.py <model_dir>
 
+Serves either model the app offers, picked by the model's config.json:
+  whisper        BuzzASR/amharic, a Whisper large-v3 fine-tune: text is
+                 generated token by token.
+  wav2vec2-bert  snapwre/hohe-asr-amharic, a CTC model: one pass over the
+                 audio, about ten times faster on the same clip.
+
 Protocol, one JSON object per line:
   stdout  {"ready": true, "device": "mps"}          once the model has loaded
   stdin   {"id": "<uuid>", "path": "/abs/file.wav"}
   stdout  {"id": "<uuid>", "text": "..."}  or  {"id": "<uuid>", "error": "..."}
 Diagnostics go to stderr. Transcripts never do.
-
-Why decode by hand instead of VoiceStudio's engine: BuzzASR/amharic was
-fine-tuned on text only, so asking it for timestamps (which every VoiceStudio
-Whisper engine does) yields nothing but end-of-text. It must also run in
-float32: in float16 or bfloat16 on Apple GPUs it emits only end-of-text too.
 """
 
 import json
+import os
+import re
 import sys
 import warnings
 import wave
 
 import numpy as np
 import torch
-from transformers import WhisperForConditionalGeneration, WhisperProcessor
+from transformers import AutoModelForCTC, AutoProcessor, WhisperForConditionalGeneration, WhisperProcessor
 from transformers.utils import logging as transformers_logging
 
 SAMPLE_RATE = 16_000
 INT16_SCALE = 32768.0
-# Whisper reads 30 s windows; cut a little earlier, at the quietest moment.
-MAX_CHUNK_S = 28
 PAUSE_SEARCH_S = 5
 FRAME_S = 0.1
-# Decoding settings from the model card.
-GENERATE_OPTIONS = {
-    "language": "am",
-    "task": "transcribe",
-    "num_beams": 1,
-    "no_repeat_ngram_size": 3,
-    "repetition_penalty": 1.2,
-}
 MAX_ERROR_LENGTH = 300
 
 
@@ -51,10 +44,10 @@ def read_wav(path: str) -> np.ndarray:
     return np.frombuffer(frames, dtype=np.int16).astype(np.float32) / INT16_SCALE
 
 
-def split_at_pauses(audio: np.ndarray) -> list[np.ndarray]:
-    """Chunks of at most MAX_CHUNK_S, each cut at the quietest 100 ms in the
+def split_at_pauses(audio: np.ndarray, max_chunk_s: int) -> list[np.ndarray]:
+    """Chunks of at most max_chunk_s, each cut at the quietest 100 ms in the
     last PAUSE_SEARCH_S of its window so words are rarely split."""
-    max_len = MAX_CHUNK_S * SAMPLE_RATE
+    max_len = max_chunk_s * SAMPLE_RATE
     search = PAUSE_SEARCH_S * SAMPLE_RATE
     frame = int(FRAME_S * SAMPLE_RATE)
     chunks: list[np.ndarray] = []
@@ -71,24 +64,88 @@ def split_at_pauses(audio: np.ndarray) -> list[np.ndarray]:
     return [chunk for chunk in chunks if len(chunk) > 0]
 
 
+def best_device() -> str:
+    return "mps" if torch.backends.mps.is_available() else "cpu"
+
+
 class Transcriber:
+    max_chunk_s = 28
+
+    def transcribe_chunk(self, chunk: np.ndarray) -> str:
+        raise NotImplementedError
+
+    @torch.inference_mode()
+    def transcribe(self, path: str) -> str:
+        texts = [self.transcribe_chunk(chunk) for chunk in split_at_pauses(read_wav(path), self.max_chunk_s)]
+        return " ".join(text for text in texts if text)
+
+
+class WhisperTranscriber(Transcriber):
+    """BuzzASR/amharic was fine-tuned on text only, so asking it for timestamps
+    (which every VoiceStudio Whisper engine does) yields nothing but
+    end-of-text. On Apple GPUs it runs in float16 with eager attention: half
+    the memory of float32 (4.4 GB against 8 GB) and the same text on our
+    recordings. Half precision with the default (SDPA) attention emits only
+    end-of-text, and bfloat16 drifts."""
+
+    # Whisper reads 30 s windows; cut a little earlier, at the quietest moment.
+    max_chunk_s = 28
+    # Decoding settings from the model card.
+    generate_options = {
+        "language": "am",
+        "task": "transcribe",
+        "num_beams": 1,
+        "no_repeat_ngram_size": 3,
+        "repetition_penalty": 1.2,
+    }
+
     def __init__(self, model_dir: str) -> None:
-        self.device = "mps" if torch.backends.mps.is_available() else "cpu"
+        self.device = best_device()
+        self.dtype = torch.float16 if self.device == "mps" else torch.float32
         self.processor = WhisperProcessor.from_pretrained(model_dir)
         self.model = (
-            WhisperForConditionalGeneration.from_pretrained(model_dir, dtype=torch.float32)
+            WhisperForConditionalGeneration.from_pretrained(model_dir, dtype=self.dtype, attn_implementation="eager")
             .to(self.device)
             .eval()
         )
 
-    @torch.inference_mode()
-    def transcribe(self, path: str) -> str:
-        texts = []
-        for chunk in split_at_pauses(read_wav(path)):
-            features = self.processor(chunk, sampling_rate=SAMPLE_RATE, return_tensors="pt").input_features
-            ids = self.model.generate(features.to(self.device), **GENERATE_OPTIONS)
-            texts.append(self.processor.batch_decode(ids, skip_special_tokens=True)[0].strip())
-        return " ".join(text for text in texts if text)
+    def transcribe_chunk(self, chunk: np.ndarray) -> str:
+        features = self.processor(chunk, sampling_rate=SAMPLE_RATE, return_tensors="pt").input_features
+        ids = self.model.generate(features.to(self.device, self.dtype), **self.generate_options)
+        return self.processor.batch_decode(ids, skip_special_tokens=True)[0].strip()
+
+
+class CtcTranscriber(Transcriber):
+    """Greedy CTC decoding. Hohe's optional 5-gram language model is left out:
+    it needs a compiled kenlm, and on a real recording it changed nothing but
+    the spacing of one word."""
+
+    # Trained on clips up to a minute; shorter chunks keep attention memory small.
+    max_chunk_s = 30
+    # The model opens its output with a language tag such as [AMH].
+    language_tag = re.compile(r"\[[A-Z]+\]")
+
+    def __init__(self, model_dir: str) -> None:
+        self.device = best_device()
+        self.processor = AutoProcessor.from_pretrained(model_dir)
+        self.model = AutoModelForCTC.from_pretrained(model_dir, dtype=torch.float32).to(self.device).eval()
+
+    def transcribe_chunk(self, chunk: np.ndarray) -> str:
+        inputs = self.processor(chunk, sampling_rate=SAMPLE_RATE, return_tensors="pt").to(self.device)
+        logits = self.model(**inputs).logits
+        text = self.processor.batch_decode(logits.argmax(-1))[0]
+        return " ".join(self.language_tag.sub(" ", text).split())
+
+
+TRANSCRIBERS = {"whisper": WhisperTranscriber, "wav2vec2-bert": CtcTranscriber}
+
+
+def load_transcriber(model_dir: str) -> Transcriber:
+    with open(os.path.join(model_dir, "config.json"), encoding="utf-8") as config:
+        model_type = json.load(config).get("model_type")
+    if model_type not in TRANSCRIBERS:
+        raise ValueError(f"unsupported model type {model_type!r}")
+    return TRANSCRIBERS[model_type](model_dir)
 
 
 def reply(message: dict) -> None:
@@ -99,7 +156,8 @@ def reply(message: dict) -> None:
 def main() -> None:
     warnings.filterwarnings("ignore")
     transformers_logging.set_verbosity_error()
-    transcriber = Transcriber(sys.argv[1])
+    transformers_logging.disable_progress_bar()
+    transcriber = load_transcriber(sys.argv[1])
     reply({"ready": True, "device": transcriber.device})
     for line in sys.stdin:
         try:

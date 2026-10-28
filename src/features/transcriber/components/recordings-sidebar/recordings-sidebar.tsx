@@ -1,8 +1,8 @@
+import { CaptureControls } from "@/features/transcriber/components/capture-controls";
 import { EngineStatus } from "@/features/transcriber/components/engine-status";
-import { RecordButton } from "@/features/transcriber/components/record-button";
 import { RecordingList } from "@/features/transcriber/components/recording-list";
 
-/** Left column: app name, the record control, saved recordings, engine status. */
+/** Left column: app name, record and dictate controls, saved recordings, engine status. */
 export function RecordingsSidebar() {
   return (
     <aside className="flex min-h-0 flex-col border-r border-line bg-panel">
@@ -13,7 +13,7 @@ export function RecordingsSidebar() {
           </h1>
           <p className="text-xs text-muted">Amharic speech to text</p>
         </div>
-        <RecordButton />
+        <CaptureControls />
       </div>
       <RecordingList />
       <EngineStatus />

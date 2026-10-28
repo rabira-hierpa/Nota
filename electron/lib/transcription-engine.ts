@@ -1,11 +1,13 @@
 import type { EngineStatus } from "@shared/types/engine";
 import type { Result } from "@shared/types/result";
 
-/** What the IPC handlers need from a speech-to-text engine. */
+/** One way of turning a 16 kHz mono WAV into Amharic text. */
 export interface TranscriptionEngine {
   status(): Promise<EngineStatus>;
-  /** `audio` is a 16 kHz mono WAV; failures come back as readable messages. */
   transcribe(audio: Uint8Array, fileName: string): Promise<Result<string>>;
-  /** Releases anything the engine holds (a helper process) when the app quits. */
+  /** Starts loading the model ahead of its first request, without waiting for it. */
+  prepare?(): void;
+  /** Frees what the engine holds while it has no work (another model is in use). */
+  release?(): void;
   dispose?(): void;
 }

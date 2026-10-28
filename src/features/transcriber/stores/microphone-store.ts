@@ -1,26 +1,9 @@
 import { create } from "zustand";
 import { chooseMicrophone, toMicrophones } from "@/features/transcriber/lib/microphones";
 import type { Microphone } from "@/features/transcriber/types/microphone";
+import { readPreference, savePreference } from "@/lib/preferences";
 
 const STORAGE_KEY = "amharic-stt:microphone";
-
-// Storage can be unavailable (private profile, blocked site data); the choice
-// is a convenience, so failing to remember it is harmless.
-function readSavedId(): string | null {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveId(id: string): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, id);
-  } catch {
-    // Not remembered across launches; the in-memory choice still applies.
-  }
-}
 
 interface MicrophoneStore {
   microphones: Microphone[];
@@ -44,11 +27,11 @@ export const useMicrophoneStore = create<MicrophoneStore>()((set, get) => ({
       return;
     }
     const microphones = toMicrophones(devices);
-    set({ microphones, selectedId: chooseMicrophone(microphones, get().selectedId ?? readSavedId()) });
+    set({ microphones, selectedId: chooseMicrophone(microphones, get().selectedId ?? readPreference(STORAGE_KEY)) });
   },
 
   select: (id) => {
-    saveId(id);
+    savePreference(STORAGE_KEY, id);
     set({ selectedId: id });
   },
 }));

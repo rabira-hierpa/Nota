@@ -6,7 +6,9 @@ export const IPC_CHANNELS = {
   createRecording: "recordings:create",
   readAudio: "recordings:read-audio",
   transcribe: "recordings:transcribe",
+  transcribeClip: "dictation:transcribe-clip",
   updateTranscript: "recordings:update-transcript",
   deleteRecording: "recordings:delete",
-  engineStatus: "engine:status",
+  listModels: "models:list",
+  prepareModel: "models:prepare",
 } as const satisfies Record<keyof DesktopApi, string>;

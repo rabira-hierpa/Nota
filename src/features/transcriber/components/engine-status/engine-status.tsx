@@ -1,48 +1,44 @@
 "use client";
 
 import { useEnginePolling } from "@/features/transcriber/hooks/use-engine-polling";
-import { useEngineStore } from "@/features/transcriber/stores/engine-store";
+import { MODEL_LABELS } from "@/features/transcriber/lib/model-labels";
+import { selectedModel, useEngineStore } from "@/features/transcriber/stores/engine-store";
 import type { EngineState } from "@/features/transcriber/stores/engine-store";
 import { cx } from "@/utils/cx";
-import type { EngineName } from "@shared/types/engine";
+import type { ModelStatus } from "@shared/types/engine";
 
-const ENGINE_LABELS: Record<EngineName, { online: string; offline: string }> = {
-  "amharic-model": { online: "Amharic model ready", offline: "Amharic model not set up" },
-  voicestudio: { online: "VoiceStudio connected", offline: "VoiceStudio offline" },
-};
+type Indicator = { label: string; tone: "checking" | "online" | "problem"; problem: string | null };
 
-function statusLabel(status: EngineState): string {
-  switch (status.kind) {
-    case "checking":
-      return "Checking the speech engine…";
-    case "unreachable":
-      return "Speech engine unavailable";
-    case "online":
-    case "offline":
-      return ENGINE_LABELS[status.engine][status.kind];
-  }
+function indicator(state: EngineState, model: ModelStatus | null): Indicator {
+  if (state.kind === "checking") return { label: "Checking the speech engine…", tone: "checking", problem: null };
+  if (state.kind === "unreachable") return { label: "Speech engine unavailable", tone: "problem", problem: state.reason };
+  if (!model) return { label: "No speech model available", tone: "problem", problem: null };
+  const labels = MODEL_LABELS[model.model];
+  return model.kind === "online"
+    ? { label: labels.online, tone: "online", problem: null }
+    : { label: labels.offline, tone: "problem", problem: model.reason };
 }
 
-const DOTS: Record<EngineState["kind"], string> = {
+const DOTS: Record<Indicator["tone"], string> = {
   checking: "bg-muted/50",
   online: "bg-brand-600",
-  offline: "bg-amber-500",
-  unreachable: "bg-amber-500",
+  problem: "bg-amber-500",
 };
 
-/** Sidebar footer: which engine transcribes, and whether it can right now. */
+/** Sidebar footer: whether the chosen model can transcribe right now. */
 export function EngineStatus() {
   useEnginePolling();
-  const status = useEngineStore((state) => state.status);
-  const check = useEngineStore((state) => state.check);
-  const problem = status.kind === "offline" || status.kind === "unreachable" ? status.reason : null;
+  const state = useEngineStore((store) => store.state);
+  const model = useEngineStore(selectedModel);
+  const check = useEngineStore((store) => store.check);
+  const { label, tone, problem } = indicator(state, model);
 
   return (
     <footer role="status" className="border-t border-line px-5 py-3">
       <div className="flex items-center gap-2 text-xs">
-        <span className={cx("size-2 shrink-0 rounded-full", DOTS[status.kind])} aria-hidden />
-        <span className="font-medium text-ink">{statusLabel(status)}</span>
-        {problem ? (
+        <span className={cx("size-2 shrink-0 rounded-full", DOTS[tone])} aria-hidden />
+        <span className="font-medium text-ink">{label}</span>
+        {tone === "problem" ? (
           <button
             type="button"
             onClick={() => void check()}

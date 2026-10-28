@@ -112,7 +112,7 @@ describe("status", () => {
         ? json(response, 200, { protocol: "voicestudio.speech.v1" })
         : json(response, 404, {}),
     );
-    expect(await new VoiceStudioClient({ baseUrl: url, apiKey: null }).status()).toEqual({ kind: "online", engine: "voicestudio" });
+    expect(await new VoiceStudioClient({ baseUrl: url, apiKey: null }).status()).toEqual({ kind: "online" });
   });
 
   it("is offline when nothing listens", async () => {

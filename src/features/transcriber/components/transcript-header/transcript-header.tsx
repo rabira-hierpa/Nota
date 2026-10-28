@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy01, RefreshCw01, Trash01 } from "@untitledui/icons";
 import { TranscriptionBadge } from "@/features/transcriber/components/transcription-badge";
 import { formatDuration, formatRecordedAt } from "@/features/transcriber/lib/format";
+import { MODEL_LABELS } from "@/features/transcriber/lib/model-labels";
 import { useRecordingsStore } from "@/features/transcriber/stores/recordings-store";
 import { cx } from "@/utils/cx";
 import type { Recording } from "@shared/types/recording";
@@ -22,6 +23,7 @@ export function TranscriptHeader({ recording, transcribing }: TranscriptHeaderPr
   const remove = useRecordingsStore((state) => state.remove);
   const [copied, setCopied] = useState(false);
   const hasText = recording.transcript.trim().length > 0;
+  const model = recording.transcription.status === "done" ? recording.transcription.model : undefined;
 
   useEffect(() => {
     if (!copied) return;
@@ -55,6 +57,7 @@ export function TranscriptHeader({ recording, transcribing }: TranscriptHeaderPr
           <span className="font-mono tabular-nums">{formatDuration(recording.durationMs)}</span>
           <span aria-hidden>·</span>
           <TranscriptionBadge status={recording.transcription.status} transcribing={transcribing} />
+          {model && !transcribing ? <span>by {MODEL_LABELS[model].name}</span> : null}
         </div>
       </div>
       <button type="button" onClick={copy} disabled={!hasText} className={ACTION_CLASS}>

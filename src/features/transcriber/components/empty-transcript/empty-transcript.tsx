@@ -33,7 +33,8 @@ export function EmptyTranscript() {
       <h2 className="mt-4 text-base font-semibold">Speak, then read it back in Amharic</h2>
       <p className="mt-2 text-sm leading-6 text-muted">
         Press <span className="font-medium text-ink">New recording</span>, speak in Amharic, then press Stop. The
-        text appears here, ready to edit.
+        text appears here, ready to edit. Or press <span className="font-medium text-ink">Dictate</span> to watch
+        it appear as you speak.
       </p>
     </div>
   );

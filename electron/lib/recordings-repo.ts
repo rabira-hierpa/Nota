@@ -34,12 +34,16 @@ export class RecordingsRepo {
 
   create(input: CreateRecordingInput): Promise<Recording> {
     return this.exclusive(async () => {
+      const createdAt = new Date().toISOString();
       const recording: Recording = {
         id: randomUUID(),
-        createdAt: new Date().toISOString(),
+        createdAt,
         durationMs: input.durationMs,
-        transcript: "",
-        transcription: { status: "pending" },
+        transcript: input.dictated?.transcript ?? "",
+        // Dictation transcribed it while it was spoken.
+        transcription: input.dictated
+          ? { status: "done", transcribedAt: createdAt, model: input.dictated.model }
+          : { status: "pending" },
       };
       await mkdir(this.dir, { recursive: true });
       await writeFile(this.audioPath(recording.id), input.audio);

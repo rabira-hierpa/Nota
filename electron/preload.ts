@@ -8,10 +8,12 @@ const desktop: DesktopApi = {
   listRecordings: () => ipcRenderer.invoke(IPC_CHANNELS.listRecordings),
   createRecording: (input) => ipcRenderer.invoke(IPC_CHANNELS.createRecording, input),
   readAudio: (id) => ipcRenderer.invoke(IPC_CHANNELS.readAudio, id),
-  transcribe: (id) => ipcRenderer.invoke(IPC_CHANNELS.transcribe, id),
+  transcribe: (input) => ipcRenderer.invoke(IPC_CHANNELS.transcribe, input),
+  transcribeClip: (input) => ipcRenderer.invoke(IPC_CHANNELS.transcribeClip, input),
   updateTranscript: (input) => ipcRenderer.invoke(IPC_CHANNELS.updateTranscript, input),
   deleteRecording: (id) => ipcRenderer.invoke(IPC_CHANNELS.deleteRecording, id),
-  engineStatus: () => ipcRenderer.invoke(IPC_CHANNELS.engineStatus),
+  listModels: () => ipcRenderer.invoke(IPC_CHANNELS.listModels),
+  prepareModel: (model) => ipcRenderer.invoke(IPC_CHANNELS.prepareModel, model),
 };
 
 contextBridge.exposeInMainWorld("desktop", desktop);

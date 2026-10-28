@@ -1,7 +1,10 @@
-/** Which transcription engine the main process is using. */
-export type EngineName = "amharic-model" | "voicestudio";
+import type { z } from "zod";
+import type { modelIdSchema } from "@shared/schemas/engine";
 
-/** Whether that engine can transcribe right now. */
-export type EngineStatus =
-  | { kind: "online"; engine: EngineName }
-  | { kind: "offline"; engine: EngineName; reason: string };
+export type ModelId = z.infer<typeof modelIdSchema>;
+
+/** Whether an engine can transcribe right now. */
+export type EngineStatus = { kind: "online" } | { kind: "offline"; reason: string };
+
+/** A model the main process offers, and whether it can transcribe right now. */
+export type ModelStatus = EngineStatus & { model: ModelId };

@@ -1,26 +1,46 @@
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import type { EngineName } from "@shared/types/engine";
+import type { ModelId } from "@shared/types/engine";
 
 export const DEFAULT_VOICESTUDIO_URL = "http://127.0.0.1:3900";
 
-/**
- * Folder built by scripts/setup-amharic-model.sh inside the app's user-data
- * directory: the pinned BuzzASR/amharic revision with a corrected generation
- * config. Keep the name in step with that script.
- */
-export const AMHARIC_MODEL_FOLDER = "BuzzASR-amharic-3002b3f";
+export type LocalModelId = Exclude<ModelId, "voicestudio">;
+
+interface LocalModelSpec {
+  /** Built by scripts/setup-amharic-model.sh in the app's user-data directory; keep in step with it. */
+  folder: string;
+  dirEnv: string;
+  /** Present once the setup script has finished. */
+  requiredFiles: readonly string[];
+}
+
+/** The pinned revisions the setup script prepares. */
+export const LOCAL_MODELS: Record<LocalModelId, LocalModelSpec> = {
+  hohe: {
+    folder: "hohe-asr-amharic-217712d",
+    dirEnv: "HOHE_MODEL_DIR",
+    requiredFiles: ["model.safetensors", "preprocessor_config.json", "vocab.json"],
+  },
+  buzzasr: {
+    folder: "BuzzASR-amharic-3002b3f",
+    dirEnv: "BUZZASR_MODEL_DIR",
+    requiredFiles: ["model.safetensors", "generation_config.json"],
+  },
+};
+
 /** VoiceStudio installs its Python runtime here on macOS; the helper reuses it. */
 const VOICESTUDIO_PYTHON = path.join(
   os.homedir(),
   "Library/Application Support/VoiceStudio/runtime/project/.venv/bin/python",
 );
 
-export interface AmharicModelConfig {
+export interface LocalModelConfig {
+  model: LocalModelId;
   python: string;
   script: string;
   modelDir: string;
+  requiredFiles: readonly string[];
 }
 
 export interface VoiceStudioConfig {
@@ -44,20 +64,25 @@ export function readVoiceStudioConfig(env: Env = process.env): VoiceStudioConfig
 }
 
 /**
- * The Amharic model is the default: stock Whisper (VoiceStudio's engine)
- * can't transcribe Amharic. STT_ENGINE=voicestudio opts back in.
+ * The local Amharic models, the faster one first: stock Whisper (VoiceStudio's
+ * engine) can't transcribe Amharic. STT_ENGINE=voicestudio offers VoiceStudio
+ * alone instead.
  */
-export function readEngineChoice(env: Env = process.env): EngineName {
-  return env.STT_ENGINE?.trim() === "voicestudio" ? "voicestudio" : "amharic-model";
+export function readAvailableModels(env: Env = process.env): ModelId[] {
+  return env.STT_ENGINE?.trim() === "voicestudio" ? ["voicestudio"] : ["hohe", "buzzasr"];
 }
 
-export function readAmharicModelConfig(
+export function readLocalModelConfig(
+  model: LocalModelId,
   places: { userData: string; helperDir: string },
   env: Env = process.env,
-): AmharicModelConfig {
+): LocalModelConfig {
+  const spec = LOCAL_MODELS[model];
   return {
+    model,
     python: env.VOICESTUDIO_PYTHON?.trim() || VOICESTUDIO_PYTHON,
     script: path.join(places.helperDir, "amharic_transcriber.py"),
-    modelDir: env.AMHARIC_MODEL_DIR?.trim() || path.join(places.userData, "models", AMHARIC_MODEL_FOLDER),
+    modelDir: env[spec.dirEnv]?.trim() || path.join(places.userData, "models", spec.folder),
+    requiredFiles: spec.requiredFiles,
   };
 }

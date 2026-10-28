@@ -8,25 +8,30 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { cleanTranscript } from "@main/lib/clean-transcript";
-import type { AmharicModelConfig } from "@main/lib/config";
+import type { LocalModelConfig, LocalModelId } from "@main/lib/config";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { EngineStatus } from "@shared/types/engine";
 import type { Result } from "@shared/types/result";
 
-export const AMHARIC_MESSAGES = {
-  notSetUp: "The Amharic model isn't set up yet. Run npm run setup:amharic-model, then try again.",
-  failedToStart: "The Amharic model couldn't start. Check that VoiceStudio is installed, then try again.",
-  failed: "The Amharic model couldn't transcribe this recording. Try again.",
-  stopped: "The Amharic model stopped unexpectedly. Try again.",
-  timedOut: "The Amharic model took too long. Try a shorter recording.",
-} as const;
+const MODEL_NAMES: Record<LocalModelId, string> = { hohe: "Hohe", buzzasr: "BuzzASR" };
+
+export function amharicMessages(model: LocalModelId) {
+  const name = MODEL_NAMES[model];
+  return {
+    notSetUp: `${name} isn't set up yet. Run npm run setup:amharic-model, then try again.`,
+    failedToStart: `${name} couldn't start. Check that VoiceStudio is installed, then try again.`,
+    failed: `${name} couldn't transcribe this recording. Try again.`,
+    stopped: `${name} stopped unexpectedly. Try again.`,
+    timedOut: `${name} took too long. Try a shorter recording.`,
+  } as const;
+}
 
 export interface HelperTimeouts {
-  /** Loading ~6 GB of weights; seconds normally, longer from a cold disk. */
+  /** Loading the weights (2–4 GB in memory); seconds normally, longer from a cold disk. */
   loadMs: number;
   /** Per request; a 30-minute recording decodes in a few minutes on Apple GPUs. */
   transcribeMs: number;
-  /** The helper holds ~6 GB while loaded, so it exits when unused. */
+  /** The helper holds several GB while loaded, so it exits when unused. */
   idleMs: number;
 }
 
@@ -72,41 +77,58 @@ function parseHelperMessage(line: string): HelperMessage | null {
 }
 
 /**
- * Transcribes with BuzzASR/amharic through electron/python/amharic_transcriber.py,
+ * Transcribes with a local Amharic model through electron/python/amharic_transcriber.py,
  * run on VoiceStudio's Python runtime. One helper process serves every
  * request, speaking one JSON object per line; it starts on the first request
- * and exits after `idleMs` without work.
+ * (or `prepare`) and exits after `idleMs` without work.
  */
 export class AmharicModelEngine implements TranscriptionEngine {
   private helper: Helper | null = null;
   private readonly pending = new Map<string, PendingRequest>();
   private idleTimer: NodeJS.Timeout | null = null;
+  /** Requests between arriving and settling, including while the model loads. */
+  private busy = 0;
+  private readonly messages: ReturnType<typeof amharicMessages>;
 
   constructor(
-    private readonly config: AmharicModelConfig,
+    private readonly config: LocalModelConfig,
     private readonly timeouts: HelperTimeouts = DEFAULT_TIMEOUTS,
-  ) {}
+  ) {
+    this.messages = amharicMessages(config.model);
+  }
 
   async status(): Promise<EngineStatus> {
-    return (await this.isSetUp())
-      ? { kind: "online", engine: "amharic-model" }
-      : { kind: "offline", engine: "amharic-model", reason: AMHARIC_MESSAGES.notSetUp };
+    return (await this.isSetUp()) ? { kind: "online" } : { kind: "offline", reason: this.messages.notSetUp };
   }
 
   async transcribe(audio: Uint8Array, fileName: string): Promise<Result<string>> {
-    if (!(await this.isSetUp())) return failure(AMHARIC_MESSAGES.notSetUp);
+    if (!(await this.isSetUp())) return failure(this.messages.notSetUp);
+    this.busy += 1;
     this.cancelIdleShutdown();
     const dir = await mkdtemp(path.join(os.tmpdir(), "amharic-stt-"));
     try {
       const file = path.join(dir, path.basename(fileName));
       await writeFile(file, audio, { mode: 0o600 });
       const helper = this.helper ?? this.startHelper();
-      if (!(await helper.ready)) return failure(AMHARIC_MESSAGES.failedToStart);
+      if (!(await helper.ready)) return failure(this.messages.failedToStart);
       return await this.send(helper, file);
     } finally {
+      this.busy -= 1;
       await rm(dir, { recursive: true, force: true });
       this.scheduleIdleShutdown();
     }
+  }
+
+  prepare(): void {
+    void this.isSetUp().then((setUp) => {
+      if (!setUp || this.helper) return;
+      this.startHelper();
+      this.scheduleIdleShutdown();
+    });
+  }
+
+  release(): void {
+    if (this.busy === 0) this.dispose();
   }
 
   dispose(): void {
@@ -119,8 +141,7 @@ export class AmharicModelEngine implements TranscriptionEngine {
     const checks = await Promise.allSettled([
       access(this.config.python, constants.X_OK),
       access(this.config.script, constants.R_OK),
-      access(path.join(this.config.modelDir, "model.safetensors"), constants.R_OK),
-      access(path.join(this.config.modelDir, "generation_config.json"), constants.R_OK),
+      ...this.config.requiredFiles.map((file) => access(path.join(this.config.modelDir, file), constants.R_OK)),
     ]);
     return checks.every((check) => check.status === "fulfilled");
   }
@@ -157,7 +178,7 @@ export class AmharicModelEngine implements TranscriptionEngine {
       this.settle(message);
     });
     child.on("error", (error) => {
-      console.error("[amharic-model] helper failed to start:", error.message);
+      console.error(`[${this.config.model}] helper failed to start:`, error.message);
       clearTimeout(loadTimer);
       markReady(false);
     });
@@ -167,9 +188,9 @@ export class AmharicModelEngine implements TranscriptionEngine {
       if (this.helper === helper) this.helper = null;
       if (code !== 0 && signal !== "SIGTERM") {
         const tail = stderrTail.trim().split("\n").slice(-STDERR_LOG_LINES).join(" | ");
-        console.error(`[amharic-model] helper exited (${code ?? signal}): ${tail}`);
+        console.error(`[${this.config.model}] helper exited (${code ?? signal}): ${tail}`);
       }
-      this.failAll(AMHARIC_MESSAGES.stopped);
+      this.failAll(this.messages.stopped);
     });
     return helper;
   }
@@ -179,7 +200,7 @@ export class AmharicModelEngine implements TranscriptionEngine {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        resolve(failure(AMHARIC_MESSAGES.timedOut));
+        resolve(failure(this.messages.timedOut));
         helper.process.kill();
       }, this.timeouts.transcribeMs);
       this.pending.set(id, { settle: resolve, timer });
@@ -196,8 +217,8 @@ export class AmharicModelEngine implements TranscriptionEngine {
       request.settle({ success: true, data: cleanTranscript(reply.text) });
       return;
     }
-    console.error("[amharic-model] transcription failed:", reply.error);
-    request.settle(failure(AMHARIC_MESSAGES.failed));
+    console.error(`[${this.config.model}] transcription failed:`, reply.error);
+    request.settle(failure(this.messages.failed));
   }
 
   private failAll(message: string): void {
@@ -210,10 +231,10 @@ export class AmharicModelEngine implements TranscriptionEngine {
 
   private scheduleIdleShutdown(): void {
     this.cancelIdleShutdown();
-    if (!this.helper || this.pending.size > 0) return;
+    if (!this.helper || this.busy > 0) return;
     const helper = this.helper;
     this.idleTimer = setTimeout(() => {
-      if (this.pending.size > 0 || this.helper !== helper) return;
+      if (this.busy > 0 || this.helper !== helper) return;
       helper.process.kill();
       this.helper = null;
     }, this.timeouts.idleMs);

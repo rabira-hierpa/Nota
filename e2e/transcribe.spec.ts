@@ -4,6 +4,7 @@ import path from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import type { ElectronApplication, Page } from "@playwright/test";
 import { startFakeVoiceStudio } from "./fake-voice-studio";
+import { speakInPhrases } from "./phrases-microphone";
 import { silentWav } from "./silent-wav";
 
 const AMHARIC_TRANSCRIPT = "ሰላም ዓለም፣ እንዴት ነህ?";
@@ -109,6 +110,40 @@ test("refuses a silent recording and names the microphone instead of transcribin
   await expect(page.getByText("Nothing recorded yet.")).toBeVisible();
   expect(engine.requests).toHaveLength(0);
   await page.screenshot({ path: "test-results/04-silent.png" });
+  await app.close();
+  await engine.close();
+});
+
+test("dictates: text appears after each pause while still speaking, then the recording is saved with it", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url);
+  await app.context().addInitScript(speakInPhrases, { phraseSeconds: 0.9, pauseSeconds: 1.2 });
+  await page.reload();
+  await expect(page.getByText("VoiceStudio connected")).toBeVisible();
+
+  await page.getByRole("button", { name: /Dictate/ }).click();
+  const stop = page.getByRole("button", { name: /Stop dictating/ });
+  await expect(stop).toBeVisible();
+  await expect(page.getByRole("button", { name: "New recording" })).toBeDisabled();
+
+  const live = page.getByRole("region", { name: "Live transcript" });
+  await expect(live).toContainText(AMHARIC_TRANSCRIPT, { timeout: 10_000 });
+  // The text arrived while dictation was still running.
+  await expect(stop).toBeVisible();
+  await page.screenshot({ path: "test-results/05-dictating.png" });
+  await stop.click();
+
+  const editor = page.getByLabel("Amharic transcript");
+  await expect(editor).toHaveValue(new RegExp(AMHARIC_TRANSCRIPT));
+  await expect(page.getByText("Transcribed", { exact: true })).toBeVisible();
+  const clipRequests = engine.requests.length;
+  expect(clipRequests).toBeGreaterThanOrEqual(1);
+  expect(engine.requests[0]).toMatch(/filename="dictation\.wav"/);
+  // Saved as already transcribed: nothing is sent again.
+  await page.waitForTimeout(500);
+  expect(engine.requests).toHaveLength(clipRequests);
+  await expect(page.getByRole("button", { name: "Play" })).toBeEnabled();
+  await page.screenshot({ path: "test-results/06-dictated.png" });
   await app.close();
   await engine.close();
 });

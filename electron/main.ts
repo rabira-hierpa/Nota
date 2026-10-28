@@ -5,12 +5,13 @@ import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
 import { AmharicModelEngine } from "@main/lib/amharic-model-engine";
 import { APP_ORIGIN, registerAppSchemePrivileges, serveStaticExport } from "@main/lib/app-protocol";
-import { readAmharicModelConfig, readEngineChoice, readVoiceStudioConfig } from "@main/lib/config";
+import { readAvailableModels, readLocalModelConfig, readVoiceStudioConfig } from "@main/lib/config";
 import { allowMicrophoneOnly } from "@main/lib/permissions";
 import { RecordingsRepo } from "@main/lib/recordings-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
+import type { ModelId } from "@shared/types/engine";
 
 // `npm run dev` points this at the Next dev server; otherwise the static
 // export in out/ is served over app://.
@@ -29,13 +30,13 @@ if (!app.isPackaged) {
 
 registerAppSchemePrivileges();
 
-function createEngine(): TranscriptionEngine {
-  if (readEngineChoice() === "voicestudio") return new VoiceStudioClient(readVoiceStudioConfig());
+function createEngine(model: ModelId): TranscriptionEngine {
+  if (model === "voicestudio") return new VoiceStudioClient(readVoiceStudioConfig());
   // The Python helper ships beside the app (extraResources) when packaged.
   const helperDir = app.isPackaged
     ? path.join(process.resourcesPath, "python")
     : path.join(app.getAppPath(), "electron", "python");
-  return new AmharicModelEngine(readAmharicModelConfig({ userData: app.getPath("userData"), helperDir }));
+  return new AmharicModelEngine(readLocalModelConfig(model, { userData: app.getPath("userData"), helperDir }));
 }
 
 function createWindow(): void {
@@ -74,9 +75,9 @@ app
     allowMicrophoneOnly(session.defaultSession, trustedOrigin);
 
     const repo = new RecordingsRepo(path.join(app.getPath("userData"), "recordings"));
-    const engine = createEngine();
-    app.on("will-quit", () => engine.dispose?.());
-    registerIpc(createDesktopHandlers(repo, engine), trustedOrigin);
+    const engines = new Map(readAvailableModels().map((model) => [model, createEngine(model)] as const));
+    app.on("will-quit", () => engines.forEach((engine) => engine.dispose?.()));
+    registerIpc(createDesktopHandlers(repo, engines), trustedOrigin);
 
     createWindow();
     app.on("activate", () => {
