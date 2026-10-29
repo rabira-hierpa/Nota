@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Offline Amharic notes: write in Markdown, record or dictate, and Hohe transcribes on your own computer.",
+  "license": "MIT",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n next,main,app -c green,blue,magenta \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:app\"",
@@ -172,5 +173,5 @@
       "artifactName": "${productName}-${version}-win-${arch}-setup.${ext}"
     }
   },
-  "homepage": "https://github.com/rabira-hierpa/nota"
+  "homepage": "https://github.com/rabira-hierpa/Nota"
 }

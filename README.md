@@ -52,7 +52,7 @@ one-time setup, nothing needs the internet, and nothing leaves your computer.
 
 ## Download
 
-Get the latest build from [Releases](https://github.com/rabira-hierpa/nota/releases):
+Get the latest build from [Releases](https://github.com/rabira-hierpa/Nota/releases):
 
 | System | File |
 |---|---|
@@ -172,8 +172,8 @@ installs on macOS, if you have it.
 ## Run from source
 
 ```bash
-git clone https://github.com/rabira-hierpa/nota.git
-cd nota
+git clone https://github.com/rabira-hierpa/Nota.git
+cd Nota
 npm install
 npm run dev
 ```
@@ -273,3 +273,8 @@ for the conventions.
 - Neither model is bundled; the setup downloads them from Hugging Face.
 - Fonts from Google Fonts under the SIL Open Font License; icons from
   [Untitled UI](https://www.untitledui.com/icons); editor by [Tiptap](https://tiptap.dev).
+
+## License
+
+Nota is released under the [MIT License](LICENSE). The speech models it can
+download keep their own licences (above).
