@@ -31,22 +31,7 @@ export interface IndexedNote {
 
 export type SectionCounts = Record<FixedSectionKind, number>;
 
-export const SECTION_TITLES: Record<FixedSectionKind, string> = {
-  all: "Notes",
-  today: "Today",
-  todo: "Todo",
-  favorites: "Favorites",
-  untagged: "Untagged",
-  voice: "Voice notes",
-  archive: "Archive",
-  trash: "Trash",
-};
-
-export const SORT_LABELS: Record<SortOrder, string> = {
-  edited: "Date edited",
-  created: "Date created",
-  title: "Title",
-};
+export const SORT_ORDERS: readonly SortOrder[] = ["edited", "created", "title"];
 
 /** A checklist item left unticked (Tiptap writes `data-checked="false"`). */
 const OPEN_TODO = /data-checked="false"/;
@@ -59,8 +44,9 @@ export function indexNotes(notes: readonly Note[]): IndexedNote[] {
   });
 }
 
-export function sectionTitle(section: NoteSection): string {
-  return section.kind === "tag" ? `#${section.path}` : SECTION_TITLES[section.kind];
+/** A section's name in the interface's language (`titles` is `messages.sections`); a tag is its `#path`. */
+export function sectionTitle(section: NoteSection, titles: Record<FixedSectionKind, string>): string {
+  return section.kind === "tag" ? `#${section.path}` : titles[section.kind];
 }
 
 export function isSameSection(a: NoteSection, b: NoteSection): boolean {

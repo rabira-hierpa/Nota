@@ -8,15 +8,21 @@ import { OnboardingWelcome } from "@/features/notes/components/onboarding-welcom
 import { OnboardingWriting } from "@/features/notes/components/onboarding-writing";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/features/notes/lib/onboarding-buttons";
 import { useOnboardingStore } from "@/features/notes/stores/onboarding-store";
+import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
+import { useLocaleStore } from "@/stores/locale-store";
 import { cx } from "@/utils/cx";
+import type { Locale } from "@shared/types/locale";
 
-const STEPS = ["Welcome", "Offline speech", "Microphone", "Writing"] as const;
+const STEPS = ["welcome", "speech", "microphone", "writing"] as const;
 
-const STEP_VIEWS: Record<(typeof STEPS)[number], () => ReactNode> = {
-  Welcome: () => <OnboardingWelcome />,
-  "Offline speech": () => <OnboardingSpeech />,
-  Microphone: () => <OnboardingMicrophone />,
-  Writing: () => <OnboardingWriting />,
+type Step = (typeof STEPS)[number];
+
+const STEP_VIEWS: Record<Step, (m: Messages, locale: Locale) => ReactNode> = {
+  welcome: (m, locale) => <OnboardingWelcome words={m.onboarding.welcome} greet={locale !== "am"} />,
+  speech: () => <OnboardingSpeech />,
+  microphone: (m) => <OnboardingMicrophone words={m.onboarding.microphone} />,
+  writing: (m) => <OnboardingWriting words={m.onboarding.writing} />,
 };
 
 /**
@@ -32,7 +38,10 @@ export function OnboardingDialog() {
   const load = useOnboardingStore((state) => state.load);
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const name = STEPS[step] ?? STEPS[0];
+  const current = STEPS[step] ?? STEPS[0];
+  const m = useMessages();
+  const locale = useLocaleStore((state) => state.locale);
+  const name = m.onboarding.steps[current];
   const last = step === STEPS.length - 1;
 
   useEffect(() => {
@@ -59,15 +68,15 @@ export function OnboardingDialog() {
         <div className="flex max-h-[min(42rem,calc(100vh-3rem))] flex-col">
           <header className="flex items-center justify-between border-b border-line px-6 py-3">
             <h1 id={titleId} className="text-[13px] font-semibold text-muted">
-              Setup guide · {name}
+              {m.onboarding.guide} · {name}
             </h1>
-            <ol className="flex gap-1.5" aria-label="Steps">
-              {STEPS.map((title, index) => (
-                <li key={title}>
+            <ol className="flex gap-1.5" aria-label={m.onboarding.stepsLabel}>
+              {STEPS.map((id, index) => (
+                <li key={id}>
                   <button
                     type="button"
                     onClick={() => goTo(index)}
-                    aria-label={`${index + 1}. ${title}`}
+                    aria-label={`${index + 1}. ${m.onboarding.steps[id]}`}
                     aria-current={index === step ? "step" : undefined}
                     className={cx(
                       "block size-2.5 cursor-pointer rounded-full transition-colors",
@@ -80,19 +89,19 @@ export function OnboardingDialog() {
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {step > 0 ? <h2 className="mb-3 text-[17px] font-bold">{name}</h2> : null}
-            {STEP_VIEWS[name]()}
+            {STEP_VIEWS[current](m, locale)}
           </div>
           <footer className="flex items-center gap-2 border-t border-line px-6 py-3">
             <button type="button" onClick={() => void finish()} className={`${SECONDARY_BUTTON} mr-auto text-muted`}>
-              {last ? "Close" : "Skip guide"}
+              {last ? m.common.close : m.onboarding.skip}
             </button>
             {step > 0 ? (
               <button type="button" onClick={() => goTo(step - 1)} className={SECONDARY_BUTTON}>
-                Back
+                {m.common.back}
               </button>
             ) : null}
             <button type="button" onClick={() => (last ? void finish() : goTo(step + 1))} className={PRIMARY_BUTTON}>
-              {last ? "Start writing" : "Next"}
+              {last ? m.onboarding.start : m.common.next}
             </button>
           </footer>
         </div>

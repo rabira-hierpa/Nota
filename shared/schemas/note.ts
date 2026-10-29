@@ -6,6 +6,10 @@ export const MAX_DURATION_MS = 30 * 60 * 1000;
 /** 16 kHz mono 16-bit WAV is 32 KB/s; 30 minutes plus headroom. */
 export const MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 export const MAX_TRANSCRIPT_LENGTH = 50_000;
+/** A recording picked to transcribe, before it is decoded: room for 30 minutes of uncompressed CD-quality WAV. */
+export const MAX_IMPORT_BYTES = 400 * 1024 * 1024;
+/** What the file dialog offers; Chromium decodes all of these. */
+export const IMPORT_AUDIO_EXTENSIONS = ["m4a", "mp3", "wav", "ogg", "opus", "oga", "webm", "flac", "aac", "mp4"] as const;
 /** The editor's HTML: formatting makes it several times longer than the text. */
 export const MAX_NOTE_HTML_LENGTH = 1_000_000;
 export const MAX_NOTE_TEXT_LENGTH = 200_000;

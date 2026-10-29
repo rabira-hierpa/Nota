@@ -1,34 +1,39 @@
 import { app, Menu } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
 import { KEYMAP } from "@shared/keymap";
-import type { CommandId, KeyGroup } from "@shared/keymap";
+import type { CommandId, KeyBinding, KeyGroup } from "@shared/keymap";
+import { commandLabel, MENU_LABELS } from "@shared/keymap-labels";
+import type { Locale } from "@shared/types/locale";
 
-/** Which native menu each group of commands lives in. */
-const MENU_TITLES: Record<KeyGroup, string> = {
-  Notes: "File",
-  Voice: "File",
-  Note: "Note",
-  View: "View",
-};
+/** Settings sits in the app menu on a Mac (in File elsewhere), not in View with the rest of its group. */
+const SETTINGS: CommandId = "openSettings";
 
-function commandItems(groups: KeyGroup[], send: (command: CommandId) => void): MenuItemConstructorOptions[] {
-  return KEYMAP.filter((binding) => binding.inMenu && groups.includes(binding.group)).map((binding) => ({
-    label: binding.label,
-    accelerator: binding.accelerator,
-    click: () => send(binding.command),
-  }));
+function menuItem(binding: KeyBinding, send: (command: CommandId) => void, locale: Locale): MenuItemConstructorOptions {
+  return { label: commandLabel(binding, locale), accelerator: binding.accelerator, click: () => send(binding.command) };
+}
+
+function commandItems(groups: KeyGroup[], send: (command: CommandId) => void, locale: Locale): MenuItemConstructorOptions[] {
+  return KEYMAP.filter((binding) => binding.inMenu && groups.includes(binding.group) && binding.command !== SETTINGS).map(
+    (binding) => menuItem(binding, send, locale),
+  );
+}
+
+interface MenuOptions {
+  development: boolean;
+  /** The interface's language, chosen in Settings. */
+  locale: Locale;
 }
 
 /**
  * The app's menu bar, built from the shared KEYMAP so the menu, the
  * renderer's shortcuts panel and the keys themselves never disagree. Choosing
  * an item sends its command to the renderer. Standard Edit items keep text
- * editing (copy, paste, undo) working.
+ * editing (copy, paste, undo) working. Rebuilt when the language changes.
  */
-export function buildAppMenu(send: (command: CommandId) => void, { development }: { development: boolean }): Menu {
+export function buildAppMenu(send: (command: CommandId) => void, { development, locale }: MenuOptions): Menu {
   const isMac = process.platform === "darwin";
-  const settings = commandItems(["View"], send).find((item) => item.label === "Settings…");
-  const viewItems = commandItems(["View"], send).filter((item) => item !== settings);
+  const words = MENU_LABELS[locale];
+  const settings = KEYMAP.filter((binding) => binding.command === SETTINGS).map((binding) => menuItem(binding, send, locale));
 
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
@@ -36,52 +41,58 @@ export function buildAppMenu(send: (command: CommandId) => void, { development }
           {
             label: app.name,
             submenu: [
-              { role: "about" as const },
+              { role: "about" as const, label: words.about },
               { type: "separator" as const },
-              ...(settings ? [settings] : []),
+              ...settings,
               { type: "separator" as const },
-              { role: "hide" as const },
-              { role: "hideOthers" as const },
-              { role: "unhide" as const },
+              { role: "hide" as const, label: words.hide },
+              { role: "hideOthers" as const, label: words.hideOthers },
+              { role: "unhide" as const, label: words.unhide },
               { type: "separator" as const },
-              { role: "quit" as const },
+              { role: "quit" as const, label: words.quit },
             ],
           },
         ]
       : []),
     {
-      label: MENU_TITLES.Notes,
+      label: words.file,
       submenu: [
-        ...commandItems(["Notes"], send),
+        ...commandItems(["Notes"], send, locale),
         { type: "separator" },
-        ...commandItems(["Voice"], send),
-        ...(isMac ? [] : [{ type: "separator" as const }, ...(settings ? [settings] : []), { role: "quit" as const }]),
+        ...commandItems(["Voice"], send, locale),
+        ...(isMac ? [] : [{ type: "separator" as const }, ...settings, { role: "quit" as const, label: words.quit }]),
       ],
     },
     {
-      label: "Edit",
+      label: words.edit,
       submenu: [
-        { role: "undo" },
-        { role: "redo" },
+        { role: "undo", label: words.undo },
+        { role: "redo", label: words.redo },
         { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "pasteAndMatchStyle" },
-        { role: "selectAll" },
+        { role: "cut", label: words.cut },
+        { role: "copy", label: words.copy },
+        { role: "paste", label: words.paste },
+        { role: "pasteAndMatchStyle", label: words.pasteAndMatchStyle },
+        { role: "selectAll", label: words.selectAll },
       ],
     },
-    { label: MENU_TITLES.Note, submenu: commandItems(["Note"], send) },
+    { label: words.note, submenu: commandItems(["Note"], send, locale) },
     {
-      label: MENU_TITLES.View,
+      label: words.view,
       submenu: [
-        ...viewItems,
+        ...commandItems(["View"], send, locale),
         { type: "separator" },
-        { role: "togglefullscreen" },
-        ...(development ? [{ type: "separator" as const }, { role: "reload" as const }, { role: "toggleDevTools" as const }] : []),
+        { role: "togglefullscreen", label: words.toggleFullScreen },
+        ...(development
+          ? [
+              { type: "separator" as const },
+              { role: "reload" as const, label: words.reload },
+              { role: "toggleDevTools" as const, label: words.toggleDevTools },
+            ]
+          : []),
       ],
     },
-    { role: "windowMenu" },
+    { role: "windowMenu", label: words.window },
   ];
   return Menu.buildFromTemplate(template);
 }

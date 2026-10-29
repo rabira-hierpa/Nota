@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy01 } from "@untitledui/icons";
+import { useMessages } from "@/hooks/use-messages";
 
 const COPIED_MS = 1500;
 
@@ -13,6 +14,7 @@ interface CopyCommandProps {
 export function CopyCommand({ command }: CopyCommandProps) {
   // "Copied" is this button's own, momentary feedback.
   const [copied, setCopied] = useState(false);
+  const m = useMessages();
 
   useEffect(() => {
     if (!copied) return;
@@ -31,7 +33,7 @@ export function CopyCommand({ command }: CopyCommandProps) {
             .then(() => setCopied(true))
             .catch(() => setCopied(false));
         }}
-        aria-label={copied ? "Copied" : "Copy the command"}
+        aria-label={copied ? m.common.copied : m.common.copyCommand}
         className="inline-flex cursor-pointer items-center text-muted hover:text-ink"
       >
         {copied ? <Check className="size-3.5" aria-hidden /> : <Copy01 className="size-3.5" aria-hidden />}

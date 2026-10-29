@@ -38,9 +38,6 @@ export const EDITOR_FONTS: readonly EditorFont[] = [
   font("abyssinica", "Abyssinica SIL", "Amharic", "--font-abyssinica", `${ETHIOPIC_SERIF}, serif`),
 ];
 
-/** The editor's own font: Noto Sans Ethiopic for Ge'ez, the interface font for Latin. */
-export const DEFAULT_FONT_LABEL = "Default";
-
 const FIRST_VARIABLE = /var\(\s*(--[\w-]+)\s*\)/;
 
 /**

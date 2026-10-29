@@ -35,10 +35,24 @@ one-time setup, nothing needs the internet, and nothing leaves your computer.
   (with `#tag` filters); sort by date edited, date created or title.
 - **Voice notes.** Record, and the transcript becomes a new note you can edit.
   Play the recording back any time, or transcribe it again.
+- **Transcribe any recording.** A voice memo from your phone or a Telegram
+  voice message: pick it (⌘⇧O) or drop it on the note list. m4a, mp3, wav,
+  ogg, opus, flac and webm, up to 30 minutes.
 - **Live dictation.** Speak into the open note; the text appears at the cursor
   after each pause while you keep talking.
+- **Summarize & organize** (✦ above a note): its key sentences, a long
+  transcript cut into paragraphs where the topic changes, and tags that file
+  it with notes like it. Worked out on your computer, with no model and no
+  download ([how, and what a model could add](docs/amharic-ai.md)).
+- **In English or Amharic.** The whole interface, menu bar included, in
+  either language (Settings → Language · ቋንቋ).
+- **Ethiopian calendar.** Dates in the Gregorian or the Ethiopian calendar,
+  or both (Settings → Dates).
+- **Note info** (⌘⇧I, or click the word count): when a note was created and
+  last changed, and its paragraphs, words and characters.
 - **Zen mode** (⌘⇧F): only the note on screen, for distraction-free writing
-  or dictation, with the current line kept in the middle.
+  or dictation, with the current line kept in the middle. Or just fold the
+  sidebar away (⌘⌥S).
 - **Locked notes.** Encrypt a note (and its recording) with a password: AES-256-GCM,
   key derived with scrypt and held in memory only while unlocked.
 - **Export** a note as Markdown, a web page or plain text.
@@ -194,7 +208,11 @@ To run the production build: `npm run build && npm start`.
 | Tag a note | Type `#tag` or `#parent/child` anywhere in it |
 | Link notes | Type `[[Another note's title]]`; ⌘-click it to open (or create) that note |
 | Record a voice note | The microphone above the note list, or ⌘⇧R; again to stop |
+| Transcribe a recording | The waveform above the note list, or ⌘⇧O; or drop the file on the list |
 | Dictate | **Dictate** in the note, or ⌘⇧D; text appears after each pause |
+| Summarize, split, tag | ✦ above the note |
+| Dates and counts | Click the word count above the note, or ⌘⇧I; pick the calendar in Settings → Dates |
+| More room | ⌘⌥S folds the sidebar away and back |
 | Distraction-free | ⌘⇧F for Zen mode; Escape to leave |
 | Lock a note | Note menu (•••) → **Lock note**; ⌘⌥L locks all again |
 | Export | Note menu → Markdown, Web page or Plain text |

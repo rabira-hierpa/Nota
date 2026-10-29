@@ -5,7 +5,7 @@ import { _electron as electron, expect, test } from "@playwright/test";
 import type { ElectronApplication, Locator, Page } from "@playwright/test";
 import { startFakeVoiceStudio } from "./fake-voice-studio";
 import { speakInPhrases } from "./phrases-microphone";
-import { silentWav } from "./silent-wav";
+import { silentWav, toneWav } from "./silent-wav";
 
 const AMHARIC_TRANSCRIPT = "ሰላም ዓለም፣ እንዴት ነህ?";
 const RECORD_MS = 1500;
@@ -50,6 +50,11 @@ function noteList(page: Page): Locator {
 
 function library(page: Page): Locator {
   return page.getByRole("navigation", { name: "Library" });
+}
+
+/** The sidebar's sections, whatever language the interface is in. */
+function sections(page: Page): Locator {
+  return page.locator("[data-pane=library] nav");
 }
 
 /** A new note opens with the cursor in its title, so typing starts there. */
@@ -457,5 +462,203 @@ test("shows the setup guide on a fresh install, once", async () => {
   await expect(relaunched.page.getByText("No notes yet.")).toBeVisible();
   await expect(relaunched.page.getByRole("dialog", { name: /Setup guide/ })).toBeHidden();
   await relaunched.app.close();
+  await engine.close();
+});
+
+test("folds the sidebar away, brings it back, and remembers which", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  let { app, page } = await launch(engine.url);
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+  const sidebarWidth = () => page.locator("[data-pane=library]").evaluate((aside) => aside.getBoundingClientRect().width);
+
+  await page.getByRole("button", { name: /^Hide sidebar/ }).click();
+  await expect.poll(sidebarWidth).toBe(0);
+  const show = page.getByRole("button", { name: /^Show sidebar/ });
+  await expect(show).toBeVisible();
+  await page.screenshot({ path: "test-results/11-sidebar-folded.png" });
+
+  // Folded, it stays out of the way after a relaunch too.
+  await app.close();
+  ({ app, page } = await launch(engine.url));
+  await expect(page.getByRole("button", { name: /^Show sidebar/ })).toBeVisible();
+  await expect.poll(sidebarWidth).toBe(0);
+  await page.keyboard.press("ControlOrMeta+Alt+KeyS");
+  await expect.poll(sidebarWidth).toBeGreaterThan(150);
+  await expect(page.getByRole("button", { name: /^Show sidebar/ })).toBeHidden();
+  await app.close();
+  await engine.close();
+});
+
+test("shows a note's dates in the Ethiopian calendar, and its paragraphs, words and characters", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url);
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+  await writeNote(page, ["ሰላም ዓለም", "ሁለተኛ መስመር እዚህ"]);
+
+  await page.getByRole("button", { name: /5 words/ }).click();
+  const info = page.getByLabel("Note info");
+  await expect(info).toContainText("Created");
+  await expect(info).toContainText("Paragraphs2Words5Characters21");
+  await expect(info).toContainText("17 characters without spaces");
+  await expect(info).not.toContainText("ዓ.ም.");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("ControlOrMeta+Comma");
+  await page.getByText("Ethiopian", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Ethiopian" })).toBeChecked();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+Shift+KeyI");
+  await expect(info).toContainText("ዓ.ም.");
+  await page.screenshot({ path: "test-results/12-note-info.png" });
+  await page.keyboard.press("Escape");
+
+  // Both calendars: the Gregorian date, with the Ethiopian one under it.
+  await page.keyboard.press("ControlOrMeta+Comma");
+  await page.getByText("Both", { exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+Shift+KeyI");
+  await expect(info).toContainText(String(new Date().getFullYear()));
+  await expect(info).toContainText("ዓ.ም.");
+  await app.close();
+  await engine.close();
+});
+
+test("transcribes a recording made elsewhere into a new note", async () => {
+  const memo = path.join(userData, "voice-memo.wav");
+  await writeFile(memo, toneWav(2));
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url, { env: { NOTA_IMPORT_AUDIO: memo } });
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+
+  await page.getByRole("button", { name: /^Transcribe a recording/ }).click();
+  await expect(noteList(page).getByRole("button")).toHaveText([new RegExp(`^${AMHARIC_TRANSCRIPT}`)]);
+  await expect(editor(page)).toHaveText(AMHARIC_TRANSCRIPT);
+  await expect(page.getByRole("button", { name: "Play" })).toBeEnabled();
+  expect(engine.requests).toHaveLength(1);
+
+  // Dropping a file that isn't a recording says so.
+  const notes = page.getByRole("region", { name: "Notes" });
+  const dataTransfer = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["%PDF"], "minutes.pdf", { type: "application/pdf" }));
+    return transfer;
+  });
+  await notes.dispatchEvent("dragover", { dataTransfer });
+  await expect(notes.getByText("Drop a recording to transcribe it")).toBeVisible();
+  await notes.dispatchEvent("drop", { dataTransfer });
+  await expect(notes.getByRole("alert")).toHaveText("That isn't a recording. Drop an m4a, mp3, wav, ogg or opus file.");
+  await app.close();
+  await engine.close();
+});
+
+test("summarizes a long transcript, splits it into paragraphs and suggests tags", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url);
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+  await writeNote(page, ["የቡድን ስብሰባ", "ቡድኑ ስለ መተግበሪያው ዲዛይን ተወያየ። ቀጣዩ ስብሰባ ሰኞ ነው። #ስራ/ስብሰባ"]);
+  await writeNote(page, [
+    "የሳምንቱ ስብሰባ",
+    "ዛሬ ከሰዓት በኋላ ቡድኑ ተሰብስቦ ስለ አዲሱ መተግበሪያ ተወያየ። መተግበሪያው የአማርኛ ድምፅን ወደ ጽሑፍ ይቀይራል። " +
+      "ቡድኑ መተግበሪያውን በሚቀጥለው ወር ለመልቀቅ ወሰነ። የመተግበሪያው ዲዛይን ቀላል እና ንጹህ መሆን አለበት። " +
+      "በስብሰባው ላይ የበጀት ጉዳይም ተነስቷል። በጀቱ ለሶስት ወር በቂ ነው። ተጨማሪ በጀት ለማግኘት ማመልከቻ እንጽፋለን።",
+  ]);
+
+  await page.getByRole("button", { name: "Summarize and organize" }).click();
+  const panel = page.getByLabel("Summarize and organize", { exact: true }).and(page.locator("[popover]"));
+  await expect(panel.getByRole("region", { name: "Summary" }).getByRole("listitem").first()).toBeVisible();
+  await expect(panel.getByRole("button", { name: "#ስራ/ስብሰባ" })).toBeVisible();
+  await page.screenshot({ path: "test-results/13-assist.png" });
+
+  // Paragraphs with text: the editor keeps an empty one at the end for the cursor.
+  const paragraphs = editor(page).locator("p").filter({ hasText: /\S/ });
+  await panel.getByRole("button", { name: "Split into paragraphs" }).click();
+  await expect(paragraphs).toHaveCount(2);
+  await panel.getByRole("button", { name: "Add under the title" }).click();
+  await expect(editor(page).locator("blockquote")).toContainText("ማጠቃለያ፦");
+  await panel.getByRole("button", { name: "#ስራ/ስብሰባ" }).click();
+  await expect(paragraphs.last()).toHaveText("#ስራ/ስብሰባ");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // The title is still the first line.
+  await expect(noteList(page).getByRole("button").first()).toHaveText(/^የሳምንቱ ስብሰባ/);
+  await app.close();
+  await engine.close();
+});
+
+test("menus over the note's header take clicks, rather than dragging the window", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url);
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+  await writeNote(page, ["Menus", "ሁለተኛ መስመር"]);
+
+  // The header is the window's drag handle. A real click on anything still
+  // marked as part of it moves the window instead of reaching the page (which
+  // Playwright's clicks, sent straight to the page, can't see), so every menu
+  // opened from it must be marked otherwise.
+  const appRegion = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).getPropertyValue("app-region"));
+  const menus: [Locator, Locator][] = [
+    [page.getByRole("button", { name: "More actions" }), page.getByLabel("Note actions")],
+    [page.getByRole("button", { name: /words/ }), page.getByLabel("Note info")],
+    [
+      page.getByRole("button", { name: "Summarize and organize" }),
+      page.locator('[popover][aria-label="Summarize and organize"]'),
+    ],
+  ];
+  for (const [button, menu] of menus) {
+    await button.click();
+    await expect(menu).toBeVisible();
+    expect(await appRegion(menu)).not.toBe("drag");
+    for (const item of await menu.getByRole("button").all()) expect(await appRegion(item)).not.toBe("drag");
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+  }
+  await app.close();
+  await engine.close();
+});
+
+test("switches the interface to Amharic, menu bar included, and remembers it", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  let { app, page } = await launch(engine.url);
+  await expect(page.getByText("No notes yet.")).toBeVisible();
+  const menuTitles = () =>
+    app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map((item) => item.label) ?? []);
+  expect(await menuTitles()).toContain("Edit");
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByText("አማርኛ", { exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "am");
+  await expect(sections(page).getByRole("button", { name: /^ተወዳጆች/ })).toBeVisible();
+  await expect(page.getByText("እስካሁን ማስታወሻ የለም።", { exact: false })).toBeVisible();
+  await expect.poll(menuTitles).toContain("አርትዕ");
+  await page.keyboard.press("Escape");
+
+  // A note, in the Amharic interface.
+  await page.keyboard.press("ControlOrMeta+n");
+  await expect(page.getByLabel("ማስታወሻ", { exact: true })).toBeFocused();
+  await page.keyboard.type("የገበያ ዝርዝር");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("ቲማቲም እና ሽንኩርት");
+  await expect(page.getByText("ተቀምጧል", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("ማስታወሻ", { exact: true })).toHaveText("የገበያ ዝርዝርቲማቲም እና ሽንኩርት");
+  await expect(page.getByRole("button", { name: "በድምፅ ጻፍ" })).toBeVisible();
+  await page.getByRole("button", { name: /ቃላት/ }).click();
+  await expect(page.getByLabel("የማስታወሻ መረጃ")).toContainText("የተፈጠረው");
+  await page.screenshot({ path: "test-results/15-amharic-info.png" });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "ቅንብሮች" }).click();
+  await page.screenshot({ path: "test-results/14-amharic.png" });
+  await page.keyboard.press("Escape");
+
+  // Still in Amharic after a relaunch, menu bar too; and back to English.
+  await app.close();
+  ({ app, page } = await launch(engine.url));
+  await expect(sections(page).getByRole("button", { name: /^ማስታወሻዎች/ })).toBeVisible();
+  await expect.poll(menuTitles).toContain("አርትዕ");
+  await page.getByRole("button", { name: "ቅንብሮች" }).click();
+  await page.getByText("English", { exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(sections(page).getByRole("button", { name: /^Favorites/ })).toBeVisible();
+  await expect.poll(menuTitles).toContain("Edit");
+  await app.close();
   await engine.close();
 });

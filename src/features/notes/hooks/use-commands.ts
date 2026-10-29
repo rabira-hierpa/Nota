@@ -47,6 +47,13 @@ function registerGlobalCommands(): () => void {
       focusSearch();
     }),
     onCommand("zenMode", () => view().setZen(!view().zen)),
+    onCommand("toggleSidebar", () => {
+      // From Zen mode, bring the columns back with the sidebar showing.
+      if (view().zen) {
+        view().setZen(false);
+        view().setSidebarHidden(false);
+      } else view().setSidebarHidden(!view().sidebarHidden);
+    }),
     onCommand("showShortcuts", () => view().setShortcutsOpen(true)),
     onCommand("lockAll", () => void notes().lockNotes()),
     onCommand("nextNote", () => selectAdjacent(1)),

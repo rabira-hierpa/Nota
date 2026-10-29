@@ -1,11 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock01 } from "@untitledui/icons";
 import { firstLine } from "@/features/notes/lib/note-text";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useMessages } from "@/hooks/use-messages";
 import type { Note } from "@shared/types/note";
 import { unlockFormSchema } from "./lock-screen.schema";
 import type { UnlockForm } from "./lock-screen.schema";
@@ -20,12 +21,14 @@ export function LockScreen({ note }: LockScreenProps) {
   const hasPassword = useNotesStore((state) => state.lockStatus.hasPassword);
   const passwordId = useId();
   const errorId = useId();
+  const m = useMessages();
+  const schema = useMemo(() => unlockFormSchema(m.lock), [m]);
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<UnlockForm>({ resolver: zodResolver(unlockFormSchema) });
+  } = useForm<UnlockForm>({ resolver: zodResolver(schema) });
 
   const submit = handleSubmit(async ({ password }) => {
     const result = await unlockNotes(password);
@@ -40,13 +43,13 @@ export function LockScreen({ note }: LockScreenProps) {
           <Lock01 className="size-5" aria-hidden />
         </span>
         <h1 lang="am" className="mt-4 max-w-md truncate font-ethiopic text-xl font-semibold text-ink">
-          {firstLine(note.text) || "Locked note"}
+          {firstLine(note.text) || m.lock.lockedNote}
         </h1>
-        <p className="mt-1 text-[13px] text-muted">This note is locked.</p>
+        <p className="mt-1 text-[13px] text-muted">{m.lock.isLocked}</p>
         {hasPassword ? (
           <form onSubmit={(event) => void submit(event)} className="mt-6 w-full max-w-xs space-y-2 text-left" noValidate>
             <label htmlFor={passwordId} className="block text-xs font-medium text-muted">
-              Password
+              {m.lock.password}
             </label>
             <input
               id={passwordId}
@@ -60,7 +63,7 @@ export function LockScreen({ note }: LockScreenProps) {
             />
             {errors.password ? (
               <p id={errorId} role="alert" className="text-xs text-record">
-                {errors.password.message}
+                {m.translate(errors.password.message ?? "")}
               </p>
             ) : null}
             <button
@@ -68,15 +71,15 @@ export function LockScreen({ note }: LockScreenProps) {
               disabled={isSubmitting}
               className="h-10 w-full cursor-pointer rounded-lg bg-accent text-[13px] font-semibold text-on-accent transition-opacity duration-150 hover:opacity-90 disabled:cursor-progress disabled:opacity-60"
             >
-              {isSubmitting ? "Unlocking…" : "Unlock notes"}
+              {isSubmitting ? m.lock.unlocking : m.lock.unlock}
             </button>
             <p className="pt-1 text-[11px] leading-4 text-muted">
-              Unlocks every locked note until you lock them again, or the Mac sleeps.
+              {m.lock.hint}
             </p>
           </form>
         ) : (
           <p className="mt-4 max-w-sm text-[13px] text-muted">
-            This note was locked with a password that isn&apos;t on this Mac, so it can&apos;t be opened here.
+            {m.lock.elsewhere}
           </p>
         )}
       </div>

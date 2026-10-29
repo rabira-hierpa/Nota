@@ -1,8 +1,9 @@
 "use client";
 
 import { useId } from "react";
-import { MODEL_LABELS } from "@/features/notes/lib/model-labels";
+import { MODEL_NAMES } from "@/features/notes/lib/model-labels";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
+import { useMessages } from "@/hooks/use-messages";
 import { modelIdSchema } from "@shared/schemas/engine";
 
 interface ModelSelectProps {
@@ -17,6 +18,7 @@ export function ModelSelect({ disabled, compact = false }: ModelSelectProps) {
   const selected = useEngineStore(selectedModel);
   const choose = useEngineStore((store) => store.choose);
   const selectId = useId();
+  const m = useMessages();
 
   if (state.kind !== "ready" || state.models.length < 2) return null;
 
@@ -26,7 +28,7 @@ export function ModelSelect({ disabled, compact = false }: ModelSelectProps) {
         htmlFor={selectId}
         className={compact ? "sr-only" : "mb-1.5 block text-xs font-medium text-muted"}
       >
-        Speech model
+        {m.models.label}
       </label>
       <select
         id={selectId}
@@ -44,8 +46,8 @@ export function ModelSelect({ disabled, compact = false }: ModelSelectProps) {
       >
         {state.models.map((status) => (
           <option key={status.model} value={status.model}>
-            {compact ? MODEL_LABELS[status.model].name : MODEL_LABELS[status.model].option}
-            {status.kind === "offline" ? " (not set up)" : ""}
+            {compact ? MODEL_NAMES[status.model] : m.models[status.model].option}
+            {status.kind === "offline" ? m.models.notSetUp : ""}
           </option>
         ))}
       </select>

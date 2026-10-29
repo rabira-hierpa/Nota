@@ -40,3 +40,10 @@ export interface LockStatus {
   hasPassword: boolean;
   unlocked: boolean;
 }
+
+/** A recording the user picked to transcribe, still in its own format (m4a, mp3, …). */
+export interface OpenedAudio {
+  /** The file's name, to say which one couldn't be read. */
+  name: string;
+  data: Uint8Array;
+}
