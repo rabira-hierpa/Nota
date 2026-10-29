@@ -2,11 +2,13 @@
 
 import { Edit05 } from "@untitledui/icons";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useMessages } from "@/hooks/use-messages";
 
 /** The editor column when no note is open. */
 export function EmptyNote() {
   const createNote = useNotesStore((state) => state.createNote);
   const loading = useNotesStore((state) => state.load.kind !== "ready" && state.load.kind !== "error");
+  const m = useMessages();
 
   return (
     <main className="flex min-h-0 flex-col bg-paper">
@@ -17,7 +19,7 @@ export function EmptyNote() {
             ማስታወሻ ይጻፉ
           </p>
           <p className="mt-2 max-w-sm text-[13px] leading-6 text-muted">
-            Write a note, or speak one in Amharic: record it, or dictate and watch the words appear.
+            {m.emptyNote.body}
           </p>
           <button
             type="button"
@@ -25,7 +27,7 @@ export function EmptyNote() {
             className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 text-[13px] font-semibold text-on-accent shadow-sm transition-opacity duration-150 hover:opacity-90"
           >
             <Edit05 className="size-4" aria-hidden />
-            New note
+            {m.emptyNote.newNote}
             <kbd className="ml-1 font-sans text-xs text-on-accent/80">⌘N</kbd>
           </button>
         </div>

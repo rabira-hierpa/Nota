@@ -5,6 +5,7 @@ import { ChevronRight, Hash02 } from "@untitledui/icons";
 import { SectionLink } from "@/features/notes/components/section-link";
 import type { TagNode } from "@/features/notes/lib/tags";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useMessages } from "@/hooks/use-messages";
 import { cx } from "@/utils/cx";
 
 const ETHIOPIC = /[ሀ-᎟ⶀ-⷟꬀-꬯]/u;
@@ -19,6 +20,7 @@ export function TagTreeItem({ node }: TagTreeItemProps) {
   const showSection = useNotesStore((state) => state.showSection);
   // Which branches are open is this row's own, disposable view state.
   const [open, setOpen] = useState(false);
+  const m = useMessages();
   const hasChildren = node.children.length > 0;
 
   return (
@@ -28,7 +30,7 @@ export function TagTreeItem({ node }: TagTreeItemProps) {
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            aria-label={open ? `Collapse #${node.path}` : `Expand #${node.path}`}
+            aria-label={open ? m.sidebar.collapseTag(node.path) : m.sidebar.expandTag(node.path)}
             aria-expanded={open}
             className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-hover hover:text-ink"
           >

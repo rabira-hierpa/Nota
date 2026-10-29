@@ -5,6 +5,7 @@ import { countSections, indexNotes, notesInSection } from "@/features/notes/lib/
 import type { IndexedNote, SectionCounts } from "@/features/notes/lib/note-sections";
 import { parseSearch } from "@/features/notes/lib/search";
 import type { SearchQuery } from "@/features/notes/lib/search";
+import type { TaggedText } from "@/features/notes/lib/suggest-tags";
 import { buildTagTree } from "@/features/notes/lib/tags";
 import type { TagNode } from "@/features/notes/lib/tags";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
@@ -39,6 +40,18 @@ export function useVisibleNotes(): { notes: Note[]; query: SearchQuery } {
     const query = parseSearch(search);
     return { notes: notesInSection(entries, section, query, sort), query };
   }, [entries, section, search, sort]);
+}
+
+/** What tag suggestions compare a note with: every note outside the Trash whose text can be read. */
+export function useTaggedTexts(): TaggedText[] {
+  const entries = useIndexedNotes();
+  return useMemo(
+    () =>
+      entries
+        .filter(({ note }) => note.trashedAt === null && note.lock === null)
+        .map(({ note, tags }) => ({ id: note.id, text: note.text, tags })),
+    [entries],
+  );
 }
 
 export function useSelectedNote(): Note | null {

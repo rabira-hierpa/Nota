@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   exportNote: "notes:export",
   attachAudio: "notes:attach-audio",
   readAudio: "notes:read-audio",
+  openAudioFile: "notes:open-audio-file",
   transcribe: "notes:transcribe",
   transcribeClip: "dictation:transcribe-clip",
   listModels: "models:list",
@@ -29,6 +30,7 @@ export const IPC_CHANNELS = {
   cancelModelSetup: "setup:cancel",
   getOnboarding: "onboarding:get",
   completeOnboarding: "onboarding:complete",
+  setLocale: "app:set-locale",
 } as const satisfies Record<keyof DesktopApi, string>;
 
 /** Main → renderer: a menu command (or the system asking to lock the notes). */

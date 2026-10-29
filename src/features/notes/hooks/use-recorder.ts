@@ -6,6 +6,7 @@ import { microphoneErrorMessage, silentRecordingMessage } from "@/features/notes
 import { audioConstraints } from "@/features/notes/lib/microphones";
 import { toMonoWav } from "@/features/notes/lib/to-mono-wav";
 import type { Microphone } from "@/features/notes/types/microphone";
+import { currentMessages } from "@/lib/i18n";
 import { MAX_DURATION_MS } from "@shared/schemas/note";
 import type { CreateVoiceNoteInput, Note } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
@@ -60,7 +61,7 @@ export function useRecorder(
     try {
       const { input, peak } = await toMonoWav(new Blob(capture.chunks, { type: capture.recorder.mimeType }));
       if (input.durationMs < MIN_DURATION_MS) {
-        setState({ kind: "error", message: "That recording was too short. Try again." });
+        setState({ kind: "error", message: currentMessages().errors.recordingTooShort });
         return;
       }
       if (peak < SILENT_PEAK) {
@@ -70,7 +71,7 @@ export function useRecorder(
       const saved = await onRecordedRef.current(input);
       setState(saved.success ? { kind: "idle" } : { kind: "error", message: saved.error });
     } catch {
-      setState({ kind: "error", message: "Couldn't process the recording. Try again." });
+      setState({ kind: "error", message: currentMessages().errors.recordingFailed });
     }
   }, []);
 

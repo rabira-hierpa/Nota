@@ -4,12 +4,9 @@ import { Microphone02, Stop } from "@untitledui/icons";
 import { useElapsed } from "@/features/notes/hooks/use-elapsed";
 import type { RecorderState } from "@/features/notes/hooks/use-recorder";
 import { formatDuration } from "@/features/notes/lib/format";
+import { useMessages } from "@/hooks/use-messages";
 import { cx } from "@/utils/cx";
 
-const BUSY_LABELS: Partial<Record<RecorderState["kind"], string>> = {
-  starting: "Starting microphone…",
-  saving: "Saving…",
-};
 
 interface RecordButtonProps {
   state: RecorderState;
@@ -22,14 +19,15 @@ interface RecordButtonProps {
 /** Record a voice note: transcribed into a new note after Stop. */
 export function RecordButton({ state, disabled, onStart, onStop }: RecordButtonProps) {
   const elapsed = useElapsed(state.kind === "recording" ? state.startedAt : null);
-  const busyLabel = BUSY_LABELS[state.kind];
+  const m = useMessages();
+  const busyLabel = state.kind === "starting" ? m.record.starting : state.kind === "saving" ? m.record.saving : undefined;
 
   if (state.kind === "recording") {
     return (
       <button
         type="button"
         onClick={onStop}
-        aria-label="Stop recording"
+        aria-label={m.record.stop}
         className="no-drag inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-record px-3 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:opacity-90"
       >
         <span className="size-1.5 animate-record-pulse rounded-full bg-white" aria-hidden />
@@ -44,8 +42,8 @@ export function RecordButton({ state, disabled, onStart, onStop }: RecordButtonP
       type="button"
       onClick={onStart}
       disabled={disabled || busyLabel !== undefined}
-      aria-label={busyLabel ?? "Record a voice note"}
-      title="Record a voice note"
+      aria-label={busyLabel ?? m.record.start}
+      title={m.record.start}
       className={cx(
         "no-drag inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-hover hover:text-record",
         "disabled:cursor-not-allowed disabled:opacity-40",

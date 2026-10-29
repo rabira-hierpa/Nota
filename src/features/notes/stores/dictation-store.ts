@@ -9,6 +9,7 @@ import { TARGET_SAMPLE_RATE } from "@/features/notes/lib/to-mono-wav";
 import { useEngineStore } from "@/features/notes/stores/engine-store";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 import type { Microphone } from "@/features/notes/types/microphone";
+import { currentMessages } from "@/lib/i18n";
 import { invokeDesktop } from "@/lib/desktop";
 import { MAX_DURATION_MS } from "@shared/schemas/note";
 import type { ModelId, ModelStatus } from "@shared/types/engine";
@@ -62,7 +63,6 @@ const MS_PER_SECOND = 1000;
 const MIN_SAMPLES = (TARGET_SAMPLE_RATE * 300) / MS_PER_SECOND;
 /** Stop a little before the cap so the saved length never exceeds it. */
 const AUTO_STOP_SAMPLES = (TARGET_SAMPLE_RATE * (MAX_DURATION_MS - 2000)) / MS_PER_SECOND;
-const NO_MODEL = "No speech model is available yet. Check the status at the bottom of the sidebar.";
 
 let session: Session | null = null;
 
@@ -140,7 +140,7 @@ export const useDictationStore = create<DictationStore>()((set, get) => {
       const { kind } = get().state;
       if (kind !== "idle" && kind !== "error") return;
       if (!model || model.kind === "offline") {
-        set({ state: { kind: "error", message: model?.kind === "offline" ? model.reason : NO_MODEL } });
+        set({ state: { kind: "error", message: model?.kind === "offline" ? model.reason : currentMessages().errors.noModel } });
         return;
       }
       set({ state: { kind: "starting" }, noteId: target.noteId, model: model.model, pendingClips: 0, clipError: null });

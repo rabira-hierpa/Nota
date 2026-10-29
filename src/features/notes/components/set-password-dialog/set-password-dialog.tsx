@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useMessages } from "@/hooks/use-messages";
 import { useViewStore } from "@/features/notes/stores/view-store";
 import { setPasswordFormSchema } from "./set-password-dialog.schema";
 import type { SetPasswordForm } from "./set-password-dialog.schema";
@@ -22,13 +23,15 @@ export function SetPasswordDialog() {
   const toggleLocked = useNotesStore((state) => state.toggleLocked);
   const ref = useRef<HTMLDialogElement>(null);
   const ids = { password: useId(), confirm: useId(), understood: useId(), title: useId() };
+  const m = useMessages();
+  const schema = useMemo(() => setPasswordFormSchema(m.setPassword), [m]);
   const {
     register,
     handleSubmit,
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<SetPasswordForm>({ resolver: zodResolver(setPasswordFormSchema) });
+  } = useForm<SetPasswordForm>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
     const element = ref.current;
@@ -60,14 +63,12 @@ export function SetPasswordDialog() {
     >
       <form onSubmit={(event) => void submit(event)} noValidate className="space-y-3 p-5">
         <h2 id={ids.title} className="text-[15px] font-bold">
-          Set a password for locked notes
+          {m.setPassword.title}
         </h2>
-        <p className="text-[13px] leading-5 text-muted">
-          Locked notes are encrypted with this password. If you forget it, nobody can open them, including you.
-        </p>
+        <p className="text-[13px] leading-5 text-muted">{m.setPassword.body}</p>
         <div>
           <label htmlFor={ids.password} className="mb-1 block text-xs font-medium text-muted">
-            Password
+            {m.setPassword.password}
           </label>
           <input
             id={ids.password}
@@ -77,11 +78,15 @@ export function SetPasswordDialog() {
             {...register("password")}
             className={INPUT_CLASS}
           />
-          {errors.password ? <p role="alert" className="mt-1 text-xs text-record">{errors.password.message}</p> : null}
+          {errors.password ? (
+            <p role="alert" className="mt-1 text-xs text-record">
+              {m.translate(errors.password.message ?? "")}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor={ids.confirm} className="mb-1 block text-xs font-medium text-muted">
-            Type it again
+            {m.setPassword.again}
           </label>
           <input
             id={ids.confirm}
@@ -96,7 +101,7 @@ export function SetPasswordDialog() {
         <div>
           <label htmlFor={ids.understood} className="flex cursor-pointer items-start gap-2 text-[13px] leading-5">
             <input id={ids.understood} type="checkbox" {...register("understood")} className="mt-1 accent-accent" />
-            I understand a forgotten password can&apos;t be recovered.
+            {m.setPassword.understood}
           </label>
           {errors.understood ? (
             <p role="alert" className="mt-1 text-xs text-record">{errors.understood.message}</p>
@@ -108,14 +113,14 @@ export function SetPasswordDialog() {
             onClick={() => ref.current?.close()}
             className="h-9 cursor-pointer rounded-lg px-3 text-[13px] font-semibold text-ink hover:bg-hover"
           >
-            Cancel
+            {m.common.cancel}
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
             className="h-9 cursor-pointer rounded-lg bg-accent px-4 text-[13px] font-semibold text-on-accent hover:opacity-90 disabled:cursor-progress disabled:opacity-60"
           >
-            {dialog.lockAfter ? "Set password and lock" : "Set password"}
+            {dialog.lockAfter ? m.setPassword.setAndLock : m.setPassword.set}
           </button>
         </div>
       </form>

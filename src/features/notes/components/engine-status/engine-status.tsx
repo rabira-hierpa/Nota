@@ -1,22 +1,23 @@
 "use client";
 
 import { useEnginePolling } from "@/features/notes/hooks/use-engine-polling";
-import { MODEL_LABELS } from "@/features/notes/lib/model-labels";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
 import type { EngineState } from "@/features/notes/stores/engine-store";
+import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
 import { cx } from "@/utils/cx";
 import type { ModelStatus } from "@shared/types/engine";
 
 type Indicator = { label: string; tone: "checking" | "online" | "problem"; problem: string | null };
 
-function indicator(state: EngineState, model: ModelStatus | null): Indicator {
-  if (state.kind === "checking") return { label: "Checking speech…", tone: "checking", problem: null };
-  if (state.kind === "unreachable") return { label: "Speech unavailable", tone: "problem", problem: state.reason };
-  if (!model) return { label: "No speech model", tone: "problem", problem: null };
-  const labels = MODEL_LABELS[model.model];
+function indicator(state: EngineState, model: ModelStatus | null, m: Messages): Indicator {
+  if (state.kind === "checking") return { label: m.engine.checking, tone: "checking", problem: null };
+  if (state.kind === "unreachable") return { label: m.engine.unavailable, tone: "problem", problem: m.translate(state.reason) };
+  if (!model) return { label: m.engine.none, tone: "problem", problem: null };
+  const labels = m.models[model.model];
   return model.kind === "online"
     ? { label: labels.online, tone: "online", problem: null }
-    : { label: labels.offline, tone: "problem", problem: model.reason };
+    : { label: labels.offline, tone: "problem", problem: m.translate(model.reason) };
 }
 
 const DOTS: Record<Indicator["tone"], string> = {
@@ -31,7 +32,8 @@ export function EngineStatus() {
   const state = useEngineStore((store) => store.state);
   const model = useEngineStore(selectedModel);
   const check = useEngineStore((store) => store.check);
-  const { label, tone, problem } = indicator(state, model);
+  const m = useMessages();
+  const { label, tone, problem } = indicator(state, model, m);
 
   return (
     <div role="status" className="min-w-0 flex-1">
@@ -46,7 +48,7 @@ export function EngineStatus() {
             onClick={() => void check()}
             className="ml-auto shrink-0 cursor-pointer rounded font-medium text-accent-ink hover:underline"
           >
-            Retry
+            {m.common.retry}
           </button>
         ) : null}
       </div>

@@ -5,31 +5,42 @@ import { Expand01, Lock01, Minimize01, Pin02, Star01 } from "@untitledui/icons";
 import type { Editor } from "@tiptap/react";
 import { DictateButton } from "@/features/notes/components/dictate-button";
 import { IconButton } from "@/features/notes/components/icon-button";
+import { NoteAssist } from "@/features/notes/components/note-assist";
+import { NoteInfo } from "@/features/notes/components/note-info";
 import { NoteMenu } from "@/features/notes/components/note-menu";
 import { useSelectedMicrophone } from "@/features/notes/hooks/use-microphones";
 import type { SaveState } from "@/features/notes/hooks/use-note-editor";
 import { onCommand } from "@/features/notes/lib/command-bus";
 import { formatDateTime } from "@/features/notes/lib/format";
 import { insertDictated, placeDictationCursor } from "@/features/notes/lib/insert-dictated";
-import { wordCount } from "@/features/notes/lib/note-text";
 import { useDictationStore } from "@/features/notes/stores/dictation-store";
 import type { DictationState } from "@/features/notes/stores/dictation-store";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
 import { useMicrophoneStore } from "@/features/notes/stores/microphone-store";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 import { useViewStore } from "@/features/notes/stores/view-store";
+import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
+import { cx } from "@/utils/cx";
 import type { Note } from "@shared/types/note";
 
 /** One shared object: a selector returning a fresh one each time would re-render forever. */
 const IDLE: DictationState = { kind: "idle" };
 
-const SAVE_LABELS: Record<SaveState, string> = {
-  idle: "",
-  saving: "Saving…",
-  saved: "Saved",
-  failed: "Couldn't save your edit",
-  "too-long": "Too long to save. Split it into two notes.",
-};
+function saveLabel(state: SaveState, words: Messages["header"]): string {
+  switch (state) {
+    case "idle":
+      return "";
+    case "saving":
+      return words.saving;
+    case "saved":
+      return words.saved;
+    case "failed":
+      return words.saveFailed;
+    case "too-long":
+      return words.tooLong;
+  }
+}
 
 interface NoteHeaderProps {
   note: Note;
@@ -54,7 +65,9 @@ export function NoteHeader({ note, editor, saveState, readOnly }: NoteHeaderProp
   const model = useEngineStore(selectedModel);
   const microphone = useSelectedMicrophone();
   const trashed = note.trashedAt !== null;
-  const words = wordCount(note.text);
+  const calendar = useViewStore((state) => state.calendar);
+  const m = useMessages();
+  const saving = saveLabel(saveState, m.header);
 
   const dictationBlocked = readOnly || !editor || dictatingElsewhere || recording;
   const dictate = () => {
@@ -83,34 +96,41 @@ export function NoteHeader({ note, editor, saveState, readOnly }: NoteHeaderProp
   }, []);
 
   return (
-    <header className="drag-region flex h-13 shrink-0 items-center gap-2 border-b border-line px-5">
-      <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-muted" aria-live="polite">
+    <header data-corner="note" className="drag-region flex h-13 shrink-0 items-center gap-2 border-b border-line px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted">
         {note.pinned ? (
           <>
             <Pin02 className="size-3.5 shrink-0 text-accent" aria-hidden />
-            <span className="sr-only">Pinned.</span>
+            <span className="sr-only">{m.header.pinned}</span>
           </>
         ) : null}
         {note.lock ? (
           <>
             <Lock01 className="size-3.5 shrink-0 text-accent" aria-hidden />
-            <span className="sr-only">Locked.</span>
+            <span className="sr-only">{m.header.locked}</span>
           </>
         ) : null}
-        <span data-zen-hide>Edited {formatDateTime(note.updatedAt)}</span>
-        <span aria-hidden data-zen-hide> · </span>
-        <span>
-          {words} {words === 1 ? "word" : "words"}
+        <span data-zen-hide className="truncate">
+          {m.header.edited(formatDateTime(note.updatedAt, calendar, m.dates))}
         </span>
-        {SAVE_LABELS[saveState] ? (
-          <>
-            <span aria-hidden> · </span>
-            <span className={saveState === "failed" || saveState === "too-long" ? "text-accent-ink" : undefined}>
-              {SAVE_LABELS[saveState]}
-            </span>
-          </>
-        ) : null}
-      </p>
+        <span aria-hidden data-zen-hide>
+          ·
+        </span>
+        <NoteInfo note={note} />
+        {/* Only the save state is announced; the rest changes with every keystroke. */}
+        <span aria-live="polite" className="flex min-w-0 items-center gap-1">
+          {saving ? (
+            <>
+              <span aria-hidden>·</span>
+              <span
+                className={cx("truncate", (saveState === "failed" || saveState === "too-long") && "text-accent-ink")}
+              >
+                {saving}
+              </span>
+            </>
+          ) : null}
+        </span>
+      </div>
       {trashed ? null : (
         <>
           <DictateButton
@@ -119,17 +139,18 @@ export function NoteHeader({ note, editor, saveState, readOnly }: NoteHeaderProp
             onStart={dictate}
             onStop={() => void stopDictation()}
           />
-          <IconButton label={zen ? "Leave Zen mode (Esc)" : "Zen mode (⌘⇧F)"} pressed={zen} onClick={() => setZen(!zen)}>
+          <IconButton label={zen ? m.header.leaveZen : m.header.zen} pressed={zen} onClick={() => setZen(!zen)}>
             {zen ? <Minimize01 className="size-4" /> : <Expand01 className="size-4" />}
           </IconButton>
           <span className="contents" data-zen-hide>
             <IconButton
-              label={note.favorite ? "Remove from Favorites" : "Add to Favorites"}
+              label={note.favorite ? m.header.removeFavorite : m.header.addFavorite}
               pressed={note.favorite}
               onClick={() => void toggleFavorite(note.id)}
             >
               <Star01 className="size-4" fill={note.favorite ? "currentColor" : "none"} />
             </IconButton>
+            <NoteAssist note={note} editor={editor} disabled={readOnly} />
             <NoteMenu note={note} editor={editor} />
           </span>
         </>

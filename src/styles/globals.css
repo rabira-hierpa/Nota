@@ -81,7 +81,6 @@
     --selected: #25312a;
     --accent: #4fbf7a;
     --accent-ink: #79d39c;
-  --on-accent: #0c1a10;
     --on-accent: #0c1a10;
     --accent-soft: rgb(79 191 122 / 0.16);
     --mark: #5b4b12;
@@ -142,6 +141,15 @@ body {
 }
 
 @utility no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Menus and dialogs float above the page, but `app-region` is inherited from
+   where they sit in the markup: a menu opened from a header would be part of
+   the window's drag handle, and a real click on it would move the window
+   instead of reaching the menu (the app seems frozen, with no error). */
+[popover],
+dialog {
   -webkit-app-region: no-drag;
 }
 
@@ -336,6 +344,39 @@ body {
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* ── The three columns, and the sidebar folded away (see useSidebar) ──────── */
+
+.notes-grid {
+  --sidebar-width: 224px;
+  --list-width: 300px;
+  grid-template-columns: var(--sidebar-width) var(--list-width) minmax(0, 1fr);
+  transition: grid-template-columns 200ms ease-out;
+}
+
+@media (max-width: 960px) {
+  .notes-grid {
+    --sidebar-width: 200px;
+    --list-width: 260px;
+  }
+}
+
+html[data-sidebar="hidden"] .notes-grid {
+  grid-template-columns: 0 var(--list-width) minmax(0, 1fr);
+}
+
+/* macOS draws the traffic lights over the window's top-left corner: the
+   sidebar's title row always, the note list's top row once the sidebar is
+   folded away, and the note's header in Zen mode. */
+html[data-platform="mac"] [data-corner="sidebar"],
+html[data-platform="mac"][data-zen] [data-corner="note"] {
+  padding-left: 84px;
+}
+
+/* The list's top row starts 16px in already. */
+html[data-platform="mac"][data-sidebar="hidden"] [data-corner="list"] {
+  padding-left: 68px;
 }
 
 /* ── Zen mode: only the note (see useZenMode) ─────────────────────────────── */

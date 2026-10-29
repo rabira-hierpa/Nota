@@ -62,6 +62,15 @@ ink on paper) and Bear's red accent; semantic colour tokens in
 `src/styles/globals.css` switch for dark mode (`data-theme`, or the system).
 Interface font Plus Jakarta Sans; all fonts in `src/lib/fonts.ts`.
 
+The interface speaks English or Amharic (Settings → Language): every word is
+in `src/lib/i18n/en.ts` and `am.ts` (same shape, type-checked), read through
+`useMessages()` (or `currentMessages()` outside React); the choice lives in
+`stores/locale-store.ts`, sets `<html lang>` and is sent to main
+(`setLocale`) so the menu bar is rebuilt in it (`shared/keymap-labels.ts`).
+Messages main sends are English constants in `shared/messages.ts`; the
+renderer shows them through `messages.translate`, which knows them by their
+English wording.
+
 Other features and where they live: pin/archive/lock fields on the note
 (`shared/schemas/note.ts`, older files default them); locked notes are sealed
 by `NoteVault` (scrypt key held in memory, AES-256-GCM; the repo stores only
@@ -70,7 +79,15 @@ keyboard shortcuts come from one table, `shared/keymap.ts`, which builds the
 native menu (`app-menu.ts`, commands sent over `COMMAND_CHANNEL`) and the
 shortcuts panel, and the renderer routes each command through
 `lib/command-bus.ts` to whichever component owns it; Zen mode is
-`html[data-zen]` CSS; the setup guide shows on a fresh install
+`html[data-zen]` CSS, and the sidebar folds away with `html[data-sidebar]`
+(`use-sidebar.ts`; whichever header sits under the Mac's traffic lights gets
+`data-corner` padding); dates go through `lib/format.ts` in the calendar
+chosen in Settings (`ethiopian-calendar.ts`, Julian day numbers); a recording
+made elsewhere is picked in main (`openAudioFile`, `NOTA_IMPORT_AUDIO` in e2e)
+or dropped on the list, decoded and saved like a recording
+(`use-note-capture.ts`); Summarize & organize is model-free
+(`summarize.ts`, `split-paragraphs.ts`, `suggest-tags.ts`, applied through
+`apply-assist.ts`; models considered in `docs/amharic-ai.md`); the setup guide shows on a fresh install
 (`onboarding.ts`; e2e sets `NOTA_ONBOARDING=off`). Releases:
 `npm run package:mac` / `package:linux` (electron-builder, ad-hoc signed,
 `node_modules` excluded since the main bundle is self-contained); the app icon

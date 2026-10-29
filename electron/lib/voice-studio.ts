@@ -4,6 +4,7 @@ import type { VoiceStudioConfig } from "@main/lib/config";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { EngineStatus } from "@shared/types/engine";
 import type { Result } from "@shared/types/result";
+import { ENGINE_MESSAGES } from "@shared/messages";
 
 /** ISO 639-1 code VoiceStudio passes to the active ASR engine. */
 const AMHARIC = "am";
@@ -19,15 +20,7 @@ const HTTP_FORBIDDEN = 403;
 const HTTP_CONFLICT = 409;
 const HTTP_GATEWAY_TIMEOUT = 504;
 
-export const ENGINE_MESSAGES = {
-  notRunning: "VoiceStudio isn't running. Open VoiceStudio, wait for its engine to start, then try again.",
-  timedOut: "VoiceStudio took too long to answer. Try a shorter recording.",
-  noModel: "VoiceStudio has no speech-recognition model installed. Install one in its Model Catalogue.",
-  badKey: "VoiceStudio rejected the API key. Check OMNIVOICE_API_KEY.",
-  licence:
-    "VoiceStudio needs you to accept this speech model's licence first. In VoiceStudio, open Model Catalogue, accept it, then press Transcribe again.",
-  unexpected: "VoiceStudio sent a response this app doesn't understand.",
-} as const;
+export { ENGINE_MESSAGES };
 
 /** VoiceStudio refuses a model until its licence is accepted in the app (HTTP 403). */
 const LICENCE_REQUIRED_CODE = "model_licence_required";

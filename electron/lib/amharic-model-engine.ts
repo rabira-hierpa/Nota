@@ -8,23 +8,13 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { cleanTranscript } from "@main/lib/clean-transcript";
-import type { LocalModelConfig, LocalModelId } from "@main/lib/config";
+import type { LocalModelConfig } from "@main/lib/config";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
+import { amharicMessages } from "@shared/messages";
 import type { EngineStatus } from "@shared/types/engine";
 import type { Result } from "@shared/types/result";
 
-const MODEL_NAMES: Record<LocalModelId, string> = { hohe: "Hohe", buzzasr: "BuzzASR" };
-
-export function amharicMessages(model: LocalModelId) {
-  const name = MODEL_NAMES[model];
-  return {
-    notSetUp: `${name} isn't set up yet. Open Settings, then the setup guide, to set it up.`,
-    failedToStart: `${name} couldn't start. Run its setup again from the setup guide in Settings.`,
-    failed: `${name} couldn't transcribe this recording. Try again.`,
-    stopped: `${name} stopped unexpectedly. Try again.`,
-    timedOut: `${name} took too long. Try a shorter recording.`,
-  } as const;
-}
+export { amharicMessages };
 
 export interface HelperTimeouts {
   /** Loading the weights (2–4 GB in memory); seconds normally, longer from a cold disk. */

@@ -13,17 +13,13 @@ import { useTypewriterScroll } from "@/features/notes/hooks/use-typewriter-scrol
 import { useDictationStore } from "@/features/notes/stores/dictation-store";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 import { useViewStore } from "@/features/notes/stores/view-store";
+import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
 import type { Note } from "@shared/types/note";
 
-const PLACEHOLDERS = {
-  transcribing: "Transcribing your recording…",
-  pending: "This recording hasn't been transcribed yet. Press Transcribe below, or type.",
-  write: "Write, or press Dictate and speak",
-} as const;
-
-function placeholderFor(note: Note, transcribing: boolean): string {
-  if (transcribing) return PLACEHOLDERS.transcribing;
-  return note.audio?.transcription.status === "pending" ? PLACEHOLDERS.pending : PLACEHOLDERS.write;
+function placeholderFor(note: Note, transcribing: boolean, words: Messages["editor"]): string {
+  if (transcribing) return words.transcribing;
+  return note.audio?.transcription.status === "pending" ? words.pending : words.write;
 }
 
 interface NoteEditorProps {
@@ -39,7 +35,12 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const dictating = useDictationStore((state) => state.noteId === note.id && state.state.kind !== "idle" && state.state.kind !== "error");
   const trashed = note.trashedAt !== null;
   const readOnly = transcribing || trashed;
-  const { editor, saveState } = useNoteEditor(note, readOnly, placeholderFor(note, transcribing));
+  const words = useMessages().editor;
+  const { editor, saveState } = useNoteEditor(note, readOnly, {
+    label: words.label,
+    title: words.titlePlaceholder,
+    placeholder: placeholderFor(note, transcribing, words),
+  });
   const zen = useViewStore((state) => state.zen);
   const scrollRef = useRef<HTMLDivElement>(null);
   useTypewriterScroll(editor, scrollRef, zen);

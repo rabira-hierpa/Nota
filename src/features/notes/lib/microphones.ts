@@ -1,4 +1,5 @@
 import type { Microphone } from "@/features/notes/types/microphone";
+import { currentMessages } from "@/lib/i18n";
 
 type DeviceLike = Pick<MediaDeviceInfo, "deviceId" | "kind" | "label">;
 
@@ -17,7 +18,7 @@ export function toMicrophones(devices: readonly DeviceLike[]): Microphone[] {
     .filter((device) => !ALIAS_IDS.has(device.deviceId))
     .map((device, index) => ({
       id: device.deviceId,
-      label: device.label.replace(USB_ID_SUFFIX, "") || `Microphone ${index + 1}`,
+      label: device.label.replace(USB_ID_SUFFIX, "") || `${currentMessages().microphone.label} ${index + 1}`,
       virtual: VIRTUAL_DEVICE.test(device.label),
       systemDefault: device.label !== "" && device.label === defaultLabel,
     }));

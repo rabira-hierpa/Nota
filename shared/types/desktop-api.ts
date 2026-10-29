@@ -1,5 +1,6 @@
 import type { CommandId } from "@shared/keymap";
 import type { LocalModelId, ModelId, ModelStatus, SetupEvent } from "@shared/types/engine";
+import type { SetLocaleInput } from "@shared/types/locale";
 import type {
   AttachAudioInput,
   CreateNoteInput,
@@ -7,6 +8,7 @@ import type {
   ExportNoteInput,
   LockStatus,
   Note,
+  OpenedAudio,
   SetArchivedInput,
   SetFavoriteInput,
   SetLockedInput,
@@ -47,6 +49,8 @@ export interface DesktopApi {
   exportNote(input: ExportNoteInput): Promise<Result<{ saved: boolean }>>;
   attachAudio(input: AttachAudioInput): Promise<Result<Note>>;
   readAudio(id: string): Promise<Result<Uint8Array>>;
+  /** Asks for a recording to transcribe (a file dialog); null if the user cancelled. */
+  openAudioFile(): Promise<Result<OpenedAudio | null>>;
   /** Transcribes a note's recording; the transcript replaces the note's text. */
   transcribe(input: TranscribeInput): Promise<Result<Note>>;
   /** Dictation: text for one clip of speech, nothing stored. */
@@ -61,6 +65,8 @@ export interface DesktopApi {
   /** Whether to show the setup guide now (a fresh install that hasn't finished it). */
   getOnboarding(): Promise<Result<{ show: boolean }>>;
   completeOnboarding(): Promise<Result<null>>;
+  /** The interface's language, so the menu bar can be drawn in it. */
+  setLocale(input: SetLocaleInput): Promise<Result<null>>;
 }
 
 /** Messages from the main process: menu commands, and "lock everything" when the Mac sleeps. */

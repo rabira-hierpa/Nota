@@ -57,6 +57,7 @@ function fakeDesktop(): Partial<DesktopApi> {
     },
     updateNoteContent: async ({ id, content, text }) => ({ success: true, data: { ...note, id, content, text } }),
     readAudio: async () => ({ success: true, data: new Uint8Array([1]) }),
+    openAudioFile: async () => ({ success: true, data: null }),
     prepareModel: async () => ({ success: true, data: null }),
   };
 }

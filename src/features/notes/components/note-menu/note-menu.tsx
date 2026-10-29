@@ -10,15 +10,16 @@ import { toHtmlDocument, toMarkdown } from "@/features/notes/lib/note-export";
 import { firstLine } from "@/features/notes/lib/note-text";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
 import { useViewStore } from "@/features/notes/stores/view-store";
+import { useMessages } from "@/hooks/use-messages";
 import { cx } from "@/utils/cx";
 import { KEYMAP } from "@shared/keymap";
 import type { CommandId } from "@shared/keymap";
 import type { ExportFormat, Note } from "@shared/types/note";
 
-const EXPORTS: { format: ExportFormat; label: string }[] = [
-  { format: "md", label: "Markdown" },
-  { format: "html", label: "Web page (HTML)" },
-  { format: "txt", label: "Plain text" },
+const EXPORTS: { format: ExportFormat; word: "markdown" | "html" | "text" }[] = [
+  { format: "md", word: "markdown" },
+  { format: "html", word: "html" },
+  { format: "txt", word: "text" },
 ];
 
 const ITEM_CLASS =
@@ -50,6 +51,7 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [exported, setExported] = useState<string | null>(null);
   const mac = useMemo(() => isMacPlatform(), []);
+  const m = useMessages();
 
   const lockOrUnlock = () => {
     if (!note.lock && !hasPassword) openPasswordDialog(note.id);
@@ -57,20 +59,20 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
   };
 
   const actions: MenuAction[] = [
-    { command: "togglePinned", label: note.pinned ? "Unpin" : "Pin to top", icon: Pin02, run: () => void togglePinned(note.id) },
+    { command: "togglePinned", label: note.pinned ? m.menu.unpin : m.menu.pin, icon: Pin02, run: () => void togglePinned(note.id) },
     {
       command: "toggleArchived",
-      label: note.archivedAt ? "Move out of the Archive" : "Archive",
+      label: note.archivedAt ? m.menu.unarchive : m.menu.archive,
       icon: Archive,
       run: () => void toggleArchived(note.id),
     },
     {
       command: "toggleLocked",
-      label: note.lock ? "Remove lock" : "Lock note",
+      label: note.lock ? m.menu.unlock : m.menu.lock,
       icon: note.lock ? LockUnlocked01 : Lock01,
       run: lockOrUnlock,
     },
-    { command: "moveToTrash", label: "Move to Trash", icon: Trash01, run: () => void moveToTrash(note.id), danger: true },
+    { command: "moveToTrash", label: m.menu.trash, icon: Trash01, run: () => void moveToTrash(note.id), danger: true },
   ];
 
   const shortcutFor = (command: CommandId) => {
@@ -84,7 +86,7 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
     const data =
       format === "md" ? toMarkdown(editor.getJSON()) : format === "html" ? toHtmlDocument(title, editor.getHTML()) : `${note.text}\n`;
     const result = await exportNote({ title, format, data });
-    setExported(result.success ? (result.data.saved ? "Exported." : null) : result.error);
+    setExported(result.success ? (result.data.saved ? m.menu.exported : null) : m.translate(result.error));
   };
 
   // The menu's commands work from the keyboard too, while this note is open.
@@ -107,8 +109,8 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
       <button
         type="button"
         popoverTarget={popoverId}
-        aria-label="More actions"
-        title="More actions"
+        aria-label={m.menu.more}
+        title={m.menu.more}
         className="no-drag inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-hover hover:text-ink"
       >
         <DotsHorizontal className="size-4" />
@@ -117,7 +119,7 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
         ref={popoverRef}
         id={popoverId}
         popover="auto"
-        aria-label="Note actions"
+        aria-label={m.menu.label}
         onToggle={() => setExported(null)}
         className="fixed inset-auto right-4 top-12 m-0 w-64 space-y-0.5 rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl"
       >
@@ -138,9 +140,9 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
         ))}
         <div className="my-1 border-t border-line" role="presentation" />
         <p className="px-2.5 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
-          Export <span className="font-sans normal-case tracking-normal">{shortcutFor("exportNote")}</span>
+          {m.menu.export} <span className="font-sans normal-case tracking-normal">{shortcutFor("exportNote")}</span>
         </p>
-        {EXPORTS.map(({ format, label }) => (
+        {EXPORTS.map(({ format, word }) => (
           <button
             key={format}
             type="button"
@@ -149,7 +151,7 @@ export function NoteMenu({ note, editor }: NoteMenuProps) {
             className={ITEM_CLASS}
           >
             <Download01 className="size-4 shrink-0 text-muted" />
-            {label}
+            {m.menu[word]}
           </button>
         ))}
         {exported ? (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { microphoneErrorMessage, silentRecordingMessage } from "@/features/notes/lib/microphone-error";
+import { am } from "@/lib/i18n/am";
 
 describe("silentRecordingMessage", () => {
   it("names the microphone so the user knows what to change", () => {
@@ -22,5 +23,12 @@ describe("microphoneErrorMessage", () => {
 
   it("falls back to a generic message", () => {
     expect(microphoneErrorMessage("")).toBe("Couldn't start recording. Try again.");
+  });
+});
+
+describe("in Amharic", () => {
+  it("says the same things in Amharic", () => {
+    expect(microphoneErrorMessage("NotFoundError", am.errors.microphone)).toBe("ማይክሮፎን አልተገኘም። አንዱን ያገናኙና እንደገና ይሞክሩ።");
+    expect(silentRecordingMessage("MacBook Pro Microphone", am.errors.microphone)).toContain("«MacBook Pro Microphone»");
   });
 });

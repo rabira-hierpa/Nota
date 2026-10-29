@@ -1,3 +1,5 @@
+import { readFile, stat } from "node:fs/promises";
+import path from "node:path";
 import { NoteNotFoundError, NoteStateError } from "@main/lib/notes-repo";
 import type { NotesRepo } from "@main/lib/notes-repo";
 import { PasswordExistsError, VaultLockedError, WrongPasswordError } from "@main/lib/note-vault";
@@ -5,12 +7,15 @@ import type { NoteVault } from "@main/lib/note-vault";
 import type { ModelSetup } from "@main/lib/model-setup";
 import type { Onboarding } from "@main/lib/onboarding";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
+import { HANDLER_ERRORS } from "@shared/messages";
 import { localModelIdSchema, modelIdSchema } from "@shared/schemas/engine";
+import { setLocaleInputSchema } from "@shared/schemas/locale";
 import {
   attachAudioInputSchema,
   createNoteInputSchema,
   createVoiceNoteInputSchema,
   exportNoteInputSchema,
+  MAX_IMPORT_BYTES,
   noteIdSchema,
   passwordSchema,
   setArchivedInputSchema,
@@ -24,20 +29,12 @@ import {
 } from "@shared/schemas/note";
 import type { DesktopApi } from "@shared/types/desktop-api";
 import type { ModelId } from "@shared/types/engine";
+import type { Locale } from "@shared/types/locale";
 import type { ExportNoteInput, Note, TranscribeInput } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 import type { z } from "zod";
 
-export const HANDLER_ERRORS = {
-  invalid: "That request wasn't valid.",
-  notFound: "That note no longer exists.",
-  state: "That can't be done to this note right now.",
-  locked: "Locked notes need your password. Unlock them, then try again.",
-  wrongPassword: "That password isn't right.",
-  noModel: "That speech model isn't available. Pick another one.",
-  setupRunning: "A setup is already running. Wait for it to finish.",
-  generic: "Something went wrong. Try again.",
-} as const;
+export { HANDLER_ERRORS };
 
 /** Every model on offer, in the order the renderer lists them. */
 export type Engines = ReadonlyMap<ModelId, TranscriptionEngine>;
@@ -45,13 +42,21 @@ export type Engines = ReadonlyMap<ModelId, TranscriptionEngine>;
 /** Saves an export where the user picks (a save dialog); false if they cancel. */
 export type SaveExport = (input: ExportNoteInput) => Promise<boolean>;
 
+/** Asks for a recording to transcribe (an open dialog): its path, or null if they cancel. */
+export type PickAudioFile = () => Promise<string | null>;
+
+class ImportTooLargeError extends Error {}
+
 export interface HandlerDeps {
   repo: NotesRepo;
   engines: Engines;
   vault: NoteVault;
   saveExport: SaveExport;
+  pickAudioFile: PickAudioFile;
   setup: ModelSetup;
   onboarding: Onboarding;
+  /** The interface's language changed: rebuild what main draws (the menu bar) in it. */
+  onLocale: (locale: Locale) => void;
 }
 
 const MAX_STORED_ERROR_LENGTH = 500;
@@ -61,7 +66,16 @@ const CLIP_FILE_NAME = "dictation.wav";
  * The main-process side of `window.desktop`. Arguments are typed by the
  * contract but arrive from another process, so every one is parsed again.
  */
-export function createDesktopHandlers({ repo, engines, vault, saveExport, setup, onboarding }: HandlerDeps): DesktopApi {
+export function createDesktopHandlers({
+  repo,
+  engines,
+  vault,
+  saveExport,
+  pickAudioFile,
+  setup,
+  onboarding,
+  onLocale,
+}: HandlerDeps): DesktopApi {
   /** The engine about to run; the others let go of their memory while idle. */
   function engineFor(model: ModelId): TranscriptionEngine | null {
     const engine = engines.get(model);
@@ -117,7 +131,20 @@ export function createDesktopHandlers({ repo, engines, vault, saveExport, setup,
       withValid(attachAudioInputSchema, input, ({ id, audio, durationMs, transcribedBy }) =>
         repo.attachAudio(id, { audio, durationMs }, transcribedBy),
       ),
+    setLocale: (input) =>
+      withValid(setLocaleInputSchema, input, async ({ locale }) => {
+        onLocale(locale);
+        return null;
+      }),
     readAudio: (id) => withValid(noteIdSchema, id, (valid) => repo.readAudio(valid)),
+    // The renderer decodes it (Chromium reads m4a, mp3, ogg…) and saves it as a voice note.
+    openAudioFile: () =>
+      attempt(async () => {
+        const filePath = await pickAudioFile();
+        if (!filePath) return null;
+        if ((await stat(filePath)).size > MAX_IMPORT_BYTES) throw new ImportTooLargeError();
+        return { name: path.basename(filePath), data: new Uint8Array(await readFile(filePath)) };
+      }),
     transcribe: (input) => {
       const parsed = transcribeInputSchema.safeParse(input);
       if (!parsed.success) return invalid();
@@ -188,6 +215,7 @@ function knownError(error: Error): string | null {
   if (error instanceof NoteStateError || error instanceof PasswordExistsError) return HANDLER_ERRORS.state;
   if (error instanceof VaultLockedError) return HANDLER_ERRORS.locked;
   if (error instanceof WrongPasswordError) return HANDLER_ERRORS.wrongPassword;
+  if (error instanceof ImportTooLargeError) return HANDLER_ERRORS.tooLarge;
   return null;
 }
 

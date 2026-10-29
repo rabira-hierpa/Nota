@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { countSections, indexNotes, isSameSection, notesInSection, sectionTitle } from "@/features/notes/lib/note-sections";
+import { am } from "@/lib/i18n/am";
+import { en } from "@/lib/i18n/en";
 import { parseSearch } from "@/features/notes/lib/search";
 import type { Note } from "@shared/types/note";
 
@@ -118,8 +120,9 @@ describe("Bear's other sections and ordering", () => {
 
 describe("sections", () => {
   it("titles tags with their hash and compares tag paths", () => {
-    expect(sectionTitle({ kind: "tag", path: "ስራ" })).toBe("#ስራ");
-    expect(sectionTitle({ kind: "favorites" })).toBe("Favorites");
+    expect(sectionTitle({ kind: "tag", path: "ስራ" }, en.sections)).toBe("#ስራ");
+    expect(sectionTitle({ kind: "favorites" }, en.sections)).toBe("Favorites");
+    expect(sectionTitle({ kind: "favorites" }, am.sections)).toBe("ተወዳጆች");
     expect(isSameSection({ kind: "tag", path: "a" }, { kind: "tag", path: "a" })).toBe(true);
     expect(isSameSection({ kind: "tag", path: "a" }, { kind: "tag", path: "b" })).toBe(false);
     expect(isSameSection({ kind: "all" }, { kind: "trash" })).toBe(false);

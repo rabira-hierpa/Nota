@@ -5,6 +5,9 @@ import { HighlightedText } from "@/features/notes/components/highlighted-text";
 import { formatListDate } from "@/features/notes/lib/format";
 import { notePreview, noteTitle } from "@/features/notes/lib/note-text";
 import { isSealed, useNotesStore } from "@/features/notes/stores/notes-store";
+import { useViewStore } from "@/features/notes/stores/view-store";
+import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
 import { cx } from "@/utils/cx";
 import type { Note } from "@shared/types/note";
 
@@ -14,9 +17,9 @@ interface NoteListItemProps {
   terms: readonly string[];
 }
 
-function placeholderTitle(note: Note, transcribing: boolean): string {
-  if (transcribing) return "Transcribing…";
-  return note.audio ? "Voice note" : "New note";
+function placeholderTitle(note: Note, transcribing: boolean, words: Messages["item"]): string {
+  if (transcribing) return words.transcribing;
+  return note.audio ? words.voiceNote : words.newNote;
 }
 
 /** A note in the list: its first line as the title, the next lines as a preview. */
@@ -28,6 +31,8 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
   // A locked note never shows its text in the list, even while it is open.
   const preview = note.lock ? "" : notePreview(note.text);
   const sealed = useNotesStore((state) => isSealed(note, state.openedIds));
+  const calendar = useViewStore((state) => state.calendar);
+  const m = useMessages();
 
   return (
     <li className="border-b border-line/70 last:border-b-0">
@@ -50,18 +55,18 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
               transcribing && "animate-pulse",
             )}
           >
-            {title ? <HighlightedText text={title} terms={terms} /> : placeholderTitle(note, transcribing)}
+            {title ? <HighlightedText text={title} terms={terms} /> : placeholderTitle(note, transcribing, m.item)}
           </span>
           {note.pinned ? (
             <>
               <Pin02 className="size-3.5 shrink-0 text-accent" aria-hidden />
-              <span className="sr-only">Pinned</span>
+              <span className="sr-only">{m.item.pinned}</span>
             </>
           ) : null}
           {note.favorite ? (
             <>
               <Star01 className="size-3.5 shrink-0 text-accent" fill="currentColor" aria-hidden />
-              <span className="sr-only">Favorite</span>
+              <span className="sr-only">{m.item.favorite}</span>
             </>
           ) : null}
         </span>
@@ -71,17 +76,17 @@ export function NoteListItem({ note, terms }: NoteListItemProps) {
           </span>
         ) : null}
         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
-          <time dateTime={note.updatedAt}>{formatListDate(note.updatedAt)}</time>
+          <time dateTime={note.updatedAt}>{formatListDate(note.updatedAt, calendar, m.dates)}</time>
           {note.lock ? (
             <span className="inline-flex items-center gap-1">
               <Lock01 className="size-3" aria-hidden />
-              {sealed ? "Locked" : "Unlocked"}
+              {sealed ? m.item.locked : m.item.unlocked}
             </span>
           ) : null}
           {note.audio ? (
             <>
               <Microphone02 className="size-3" aria-hidden />
-              <span className="sr-only">Has a recording</span>
+              <span className="sr-only">{m.item.hasRecording}</span>
             </>
           ) : null}
         </span>

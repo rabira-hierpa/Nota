@@ -3,13 +3,10 @@
 import { Recording02, Stop } from "@untitledui/icons";
 import { useElapsed } from "@/features/notes/hooks/use-elapsed";
 import { formatDuration } from "@/features/notes/lib/format";
+import { useMessages } from "@/hooks/use-messages";
 import type { DictationState } from "@/features/notes/stores/dictation-store";
 import { cx } from "@/utils/cx";
 
-const BUSY_LABELS: Partial<Record<DictationState["kind"], string>> = {
-  starting: "Starting…",
-  finishing: "Finishing…",
-};
 
 interface DictateButtonProps {
   state: DictationState;
@@ -22,7 +19,8 @@ interface DictateButtonProps {
 /** Live dictation into the open note: the words appear at the cursor after each pause. */
 export function DictateButton({ state, disabled, onStart, onStop }: DictateButtonProps) {
   const elapsed = useElapsed(state.kind === "listening" ? state.startedAt : null);
-  const busyLabel = BUSY_LABELS[state.kind];
+  const m = useMessages();
+  const busyLabel = state.kind === "starting" ? m.dictate.starting : state.kind === "finishing" ? m.dictate.finishing : undefined;
 
   if (state.kind === "listening") {
     return (
@@ -33,7 +31,7 @@ export function DictateButton({ state, disabled, onStart, onStop }: DictateButto
         className="no-drag inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-accent px-3 text-xs font-semibold text-on-accent shadow-sm transition-opacity duration-150 hover:opacity-90"
       >
         <span className="size-1.5 animate-record-pulse rounded-full bg-on-accent" aria-hidden />
-        <span>Stop dictating</span>
+        <span>{m.dictate.stop}</span>
         <span className="font-mono tabular-nums">{formatDuration(elapsed)}</span>
         <Stop className="size-3.5" aria-hidden />
       </button>
@@ -46,7 +44,7 @@ export function DictateButton({ state, disabled, onStart, onStop }: DictateButto
       onClick={onStart}
       disabled={disabled || busyLabel !== undefined}
       aria-pressed={false}
-      title="Dictate: speak, and the text appears after each pause"
+      title={m.dictate.hint}
       className={cx(
         "no-drag inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-ink shadow-xs transition-colors duration-150 hover:border-accent hover:text-accent-ink",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:text-ink",
@@ -54,7 +52,7 @@ export function DictateButton({ state, disabled, onStart, onStop }: DictateButto
       )}
     >
       <Recording02 className="size-3.5 text-accent" aria-hidden />
-      {busyLabel ?? "Dictate"}
+      {busyLabel ?? m.dictate.start}
     </button>
   );
 }

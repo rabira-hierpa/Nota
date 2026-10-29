@@ -4,8 +4,11 @@ import { useEffect, useId, useMemo, useRef } from "react";
 import { XClose } from "@untitledui/icons";
 import { formatAccelerator, isMacPlatform } from "@/features/notes/lib/accelerators";
 import { useViewStore } from "@/features/notes/stores/view-store";
+import { useMessages } from "@/hooks/use-messages";
+import { useLocaleStore } from "@/stores/locale-store";
 import { EDITOR_KEYS, KEYMAP } from "@shared/keymap";
 import type { KeyGroup } from "@shared/keymap";
+import { commandLabel, commandWhen, editorKeyLabel, GROUP_LABELS } from "@shared/keymap-labels";
 
 const GROUPS: readonly KeyGroup[] = ["Notes", "Note", "Voice", "View"];
 
@@ -16,6 +19,9 @@ export function ShortcutsDialog() {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const mac = useMemo(() => isMacPlatform(), []);
+  const m = useMessages();
+  const locale = useLocaleStore((state) => state.locale);
+  const groups = GROUP_LABELS[locale];
 
   useEffect(() => {
     const element = ref.current;
@@ -26,15 +32,16 @@ export function ShortcutsDialog() {
 
   const sections = [
     ...GROUPS.map((group) => ({
-      title: group,
-      rows: KEYMAP.filter((binding) => binding.group === group).map((binding) => ({
-        label: binding.when ? `${binding.label} (${binding.when})` : binding.label,
-        keys: formatAccelerator(binding.accelerator, mac),
-      })),
+      title: groups[group],
+      rows: KEYMAP.filter((binding) => binding.group === group).map((binding) => {
+        const label = commandLabel(binding, locale);
+        const when = commandWhen(binding, locale);
+        return { label: when ? `${label} (${when})` : label, keys: formatAccelerator(binding.accelerator, mac) };
+      }),
     })),
     {
-      title: "Writing",
-      rows: EDITOR_KEYS.map((key) => ({ label: key.label, keys: formatAccelerator(key.accelerator, mac) })),
+      title: groups.Writing,
+      rows: EDITOR_KEYS.map((key) => ({ label: editorKeyLabel(key, locale), keys: formatAccelerator(key.accelerator, mac) })),
     },
   ];
 
@@ -47,12 +54,12 @@ export function ShortcutsDialog() {
     >
       <div className="sticky top-0 flex items-center border-b border-line bg-surface px-5 py-3">
         <h2 id={titleId} className="flex-1 text-[15px] font-bold">
-          Keyboard shortcuts
+          {m.shortcuts.title}
         </h2>
         <button
           type="button"
           onClick={() => ref.current?.close()}
-          aria-label="Close"
+          aria-label={m.common.close}
           className="flex size-8 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-hover hover:text-ink"
         >
           <XClose className="size-4" />

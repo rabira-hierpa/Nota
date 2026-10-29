@@ -6,8 +6,9 @@ import { ModelSelect } from "@/features/notes/components/model-select";
 import { TranscriptionBadge } from "@/features/notes/components/transcription-badge";
 import { useAudioPlayer } from "@/features/notes/hooks/use-audio-player";
 import { formatDuration } from "@/features/notes/lib/format";
-import { MODEL_LABELS } from "@/features/notes/lib/model-labels";
+import { MODEL_NAMES } from "@/features/notes/lib/model-labels";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useMessages } from "@/hooks/use-messages";
 import { cx } from "@/utils/cx";
 import type { Note, NoteAudio } from "@shared/types/note";
 
@@ -32,10 +33,11 @@ export function AudioBar({ note, transcribing, locked }: AudioBarProps) {
   const seekId = useId();
   const { transcription } = note.audio;
   const model = transcription.status === "done" ? transcription.model : undefined;
+  const m = useMessages();
 
   const retranscribe = () => {
     const replacing = note.text.trim().length > 0;
-    if (replacing && !window.confirm("Replace this note's text with a new transcription of its recording?")) return;
+    if (replacing && !window.confirm(m.audio.confirmReplace)) return;
     void transcribe(note.id);
   };
 
@@ -46,7 +48,7 @@ export function AudioBar({ note, transcribing, locked }: AudioBarProps) {
         type="button"
         onClick={toggle}
         disabled={!source}
-        aria-label={playing ? "Pause" : "Play"}
+        aria-label={playing ? m.audio.pause : m.audio.play}
         className="shrink-0 cursor-pointer rounded-full text-accent transition-opacity duration-150 hover:opacity-80 disabled:cursor-default disabled:text-faint"
       >
         {playing ? <PauseCircle className="size-8" aria-hidden /> : <PlayCircle className="size-8" aria-hidden />}
@@ -55,7 +57,7 @@ export function AudioBar({ note, transcribing, locked }: AudioBarProps) {
         {formatDuration(currentTime * MS_PER_SECOND)}
       </span>
       <label htmlFor={seekId} className="sr-only">
-        Playback position
+        {m.audio.position}
       </label>
       <input
         id={seekId}
@@ -73,7 +75,7 @@ export function AudioBar({ note, transcribing, locked }: AudioBarProps) {
       </span>
       <span className="mx-1 h-5 w-px bg-line" aria-hidden />
       <TranscriptionBadge status={transcription.status} transcribing={transcribing} />
-      {model && !transcribing ? <span className="text-xs text-muted">by {MODEL_LABELS[model].name}</span> : null}
+      {model && !transcribing ? <span className="text-xs text-muted">{m.audio.by(MODEL_NAMES[model])}</span> : null}
       <ModelSelect disabled={transcribing || locked} compact />
       <button
         type="button"
@@ -82,7 +84,7 @@ export function AudioBar({ note, transcribing, locked }: AudioBarProps) {
         className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-ink transition-colors duration-150 hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40"
       >
         <RefreshCw01 className={cx("size-3.5", transcribing && "animate-spin")} aria-hidden />
-        {transcription.status === "pending" ? "Transcribe" : "Transcribe again"}
+        {transcription.status === "pending" ? m.audio.transcribe : m.audio.transcribeAgain}
       </button>
     </footer>
   );

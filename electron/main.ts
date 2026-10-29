@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, dialog, Menu, nativeTheme, powerMonitor, session } from "electron";
 import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
-import type { SaveExport } from "@main/ipc/desktop-handlers";
+import type { PickAudioFile, SaveExport } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
 import { AmharicModelEngine } from "@main/lib/amharic-model-engine";
 import { buildAppMenu } from "@main/lib/app-menu";
@@ -22,7 +22,9 @@ import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
 import { COMMAND_CHANNEL, SETUP_CHANNEL } from "@shared/ipc-channels";
 import type { CommandId } from "@shared/keymap";
+import { IMPORT_AUDIO_EXTENSIONS } from "@shared/schemas/note";
 import type { ModelId } from "@shared/types/engine";
+import type { Locale } from "@shared/types/locale";
 import type { ExportFormat } from "@shared/types/note";
 
 // `npm run dev` points this at the Next dev server; otherwise the static
@@ -86,6 +88,21 @@ const saveExport: SaveExport = async ({ title, format, data }) => {
   if (result.canceled || !result.filePath) return false;
   await writeFile(result.filePath, data, "utf8");
   return true;
+};
+
+/** Asks for a recording to transcribe. e2e tests set NOTA_IMPORT_AUDIO to a file to skip the dialog. */
+const pickAudioFile: PickAudioFile = async () => {
+  const testFile = process.env.NOTA_IMPORT_AUDIO;
+  if (testFile) return testFile;
+  const options: Electron.OpenDialogOptions = {
+    title: "Transcribe a recording",
+    buttonLabel: "Transcribe",
+    defaultPath: app.getPath("documents"),
+    properties: ["openFile"],
+    filters: [{ name: "Recordings", extensions: [...IMPORT_AUDIO_EXTENSIONS] }],
+  };
+  const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 };
 
 function createWindow(): void {
@@ -161,9 +178,14 @@ app
       async () => (await repo.list()).length > 0,
       process.env.NOTA_ONBOARDING === "off",
     );
-    registerIpc(createDesktopHandlers({ repo, engines, vault, saveExport, setup, onboarding }), trustedOrigin);
-
-    Menu.setApplicationMenu(buildAppMenu(sendCommand, { development: !app.isPackaged }));
+    // The menu starts in English and follows the language the renderer reports (Settings → Language).
+    const applyMenu = (locale: Locale) =>
+      Menu.setApplicationMenu(buildAppMenu(sendCommand, { development: !app.isPackaged, locale }));
+    registerIpc(
+      createDesktopHandlers({ repo, engines, vault, saveExport, pickAudioFile, setup, onboarding, onLocale: applyMenu }),
+      trustedOrigin,
+    );
+    applyMenu("en");
     // Locked notes close when the Mac locks or sleeps, as in Bear.
     const lockAll = () => {
       vault.lock();

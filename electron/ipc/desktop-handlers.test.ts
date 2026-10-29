@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,7 @@ import { Onboarding } from "@main/lib/onboarding";
 import { NotesRepo } from "@main/lib/notes-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { ModelId } from "@shared/types/engine";
+import type { Locale } from "@shared/types/locale";
 import type { CreateNoteInput, CreateVoiceNoteInput, ExportNoteInput } from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 
@@ -18,6 +19,8 @@ let repo: NotesRepo;
 let vault: NoteVault;
 let exported: ExportNoteInput[];
 let engineResult: Result<string>;
+let pickedFile: string | null;
+let locales: Locale[];
 
 function fakeEngine() {
   return {
@@ -44,6 +47,8 @@ function handlers() {
       exported.push(input);
       return true;
     },
+    pickAudioFile: async () => pickedFile,
+    onLocale: (locale) => locales.push(locale),
     // A setup script that does nothing; the runner itself is tested on its own.
     setup: new ModelSetup(dir, dir, () => undefined),
     onboarding: new Onboarding(path.join(dir, "onboarded"), async () => (await repo.list()).length > 0, false),
@@ -68,6 +73,8 @@ beforeEach(async () => {
     ["buzzasr", buzzasr],
   ]);
   engineResult = { success: true, data: "ሰላም ዓለም" };
+  pickedFile = null;
+  locales = [];
 });
 
 afterEach(() => rm(dir, { recursive: true, force: true }));
@@ -202,5 +209,37 @@ describe("createDesktopHandlers", () => {
     expect(await api.getOnboarding()).toEqual({ success: true, data: { show: true } });
     await api.completeOnboarding();
     expect(await api.getOnboarding()).toEqual({ success: true, data: { show: false } });
+  });
+});
+
+describe("openAudioFile", () => {
+  it("returns nothing when the dialog is cancelled", async () => {
+    expect(await handlers().openAudioFile()).toEqual({ success: true, data: null });
+  });
+
+  it("returns the picked file's name and bytes, for the renderer to decode", async () => {
+    pickedFile = path.join(dir, "ቃለ መጠይቅ.m4a");
+    await writeFile(pickedFile, new Uint8Array([1, 2, 3]));
+    const result = await handlers().openAudioFile();
+    expect(result).toEqual({ success: true, data: { name: "ቃለ መጠይቅ.m4a", data: new Uint8Array([1, 2, 3]) } });
+  });
+
+  it("says so when the file can't be read, without naming its path", async () => {
+    pickedFile = path.join(dir, "gone.mp3");
+    const result = await handlers().openAudioFile();
+    expect(result).toEqual({ success: false, error: HANDLER_ERRORS.generic });
+  });
+});
+
+describe("setLocale", () => {
+  it("passes a known language on, for the menu bar", async () => {
+    expect(await handlers().setLocale({ locale: "am" })).toEqual({ success: true, data: null });
+    expect(locales).toEqual(["am"]);
+  });
+
+  it("refuses anything else", async () => {
+    // @ts-expect-error: what another process might send.
+    expect(await handlers().setLocale({ locale: "fr" })).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
+    expect(locales).toEqual([]);
   });
 });

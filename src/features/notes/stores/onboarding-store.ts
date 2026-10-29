@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useEngineStore } from "@/features/notes/stores/engine-store";
+import { currentMessages } from "@/lib/i18n";
 import { invokeDesktop, subscribeToSetup } from "@/lib/desktop";
 import type { LocalModelId } from "@shared/types/engine";
 
@@ -27,7 +28,6 @@ interface OnboardingStore {
 }
 
 const MAX_LINES = 200;
-const SETUP_FAILED = "The setup stopped before finishing. The lines above say why; fix that and try again.";
 
 let unsubscribe: (() => void) | null = null;
 
@@ -61,7 +61,7 @@ export const useOnboardingStore = create<OnboardingStore>()((set, get) => ({
       }
       unsubscribe?.();
       unsubscribe = null;
-      set({ setup: event.ok ? { kind: "done", model } : { kind: "failed", model, message: SETUP_FAILED } });
+      set({ setup: event.ok ? { kind: "done", model } : { kind: "failed", model, message: currentMessages().errors.setupFailed } });
       // The model shows as ready as soon as the main process sees its files.
       void useEngineStore.getState().check();
     });

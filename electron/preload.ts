@@ -26,6 +26,7 @@ const desktop: DesktopApi = {
   exportNote: (input) => ipcRenderer.invoke(IPC_CHANNELS.exportNote, input),
   attachAudio: (input) => ipcRenderer.invoke(IPC_CHANNELS.attachAudio, input),
   readAudio: (id) => ipcRenderer.invoke(IPC_CHANNELS.readAudio, id),
+  openAudioFile: () => ipcRenderer.invoke(IPC_CHANNELS.openAudioFile),
   transcribe: (input) => ipcRenderer.invoke(IPC_CHANNELS.transcribe, input),
   transcribeClip: (input) => ipcRenderer.invoke(IPC_CHANNELS.transcribeClip, input),
   listModels: () => ipcRenderer.invoke(IPC_CHANNELS.listModels),
@@ -34,6 +35,7 @@ const desktop: DesktopApi = {
   cancelModelSetup: () => ipcRenderer.invoke(IPC_CHANNELS.cancelModelSetup),
   getOnboarding: () => ipcRenderer.invoke(IPC_CHANNELS.getOnboarding),
   completeOnboarding: () => ipcRenderer.invoke(IPC_CHANNELS.completeOnboarding),
+  setLocale: (input) => ipcRenderer.invoke(IPC_CHANNELS.setLocale, input),
 };
 
 // The command id is validated in the renderer (src/lib/desktop.ts) before use.

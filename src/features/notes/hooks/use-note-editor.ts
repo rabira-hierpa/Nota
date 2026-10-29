@@ -22,7 +22,16 @@ interface Snapshot {
 }
 
 const SAVE_DELAY_MS = 600;
-const TITLE_PLACEHOLDER = "Title";
+
+/** The editor's own words, in the interface's language. */
+interface EditorWords {
+  /** Its accessible name. */
+  label: string;
+  /** In an empty title line. */
+  title: string;
+  /** In an empty body. */
+  placeholder: string;
+}
 /** One line per paragraph, matching how the main process writes transcripts. */
 const BLOCK_SEPARATOR = "\n";
 
@@ -34,9 +43,9 @@ function snapshot(editor: Editor): Snapshot {
  * The Tiptap editor for one note, saving as the user types. Uncontrolled:
  * the caller remounts it (via `key`) when the note's text is replaced from
  * outside, such as by a new transcription, and when a transcription starts
- * or ends (the placeholder is fixed for each mount).
+ * or ends, and when the interface's language changes (its words are fixed for each mount).
  */
-export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string) {
+export function useNoteEditor(note: Note, readOnly: boolean, words: EditorWords) {
   const saveContent = useNotesStore((state) => state.saveContent);
   const showSection = useNotesStore((state) => state.showSection);
   const openLink = useNotesStore((state) => state.openLink);
@@ -75,7 +84,7 @@ export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({
-        placeholder: ({ node }) => (node.type.name === "heading" ? TITLE_PLACEHOLDER : placeholder),
+        placeholder: ({ node }) => (node.type.name === "heading" ? words.title : words.placeholder),
       }),
       NoteDecorations.configure({
         onTagClick: (tag) => showSection({ kind: "tag", path: tag }),
@@ -87,7 +96,7 @@ export function useNoteEditor(note: Note, readOnly: boolean, placeholder: string
         class: "nota-editor",
         lang: "am",
         spellcheck: "false",
-        "aria-label": "Note",
+        "aria-label": words.label,
       },
     },
     onUpdate: ({ editor: updated }) => schedule(snapshot(updated)),

@@ -6,9 +6,17 @@ import type { NoteSection, SortOrder } from "@/features/notes/lib/note-sections"
 import { parseSearch } from "@/features/notes/lib/search";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
 import { useViewStore } from "@/features/notes/stores/view-store";
+import { currentMessages } from "@/lib/i18n";
 import { invokeDesktop } from "@/lib/desktop";
 import { MAX_NOTE_TEXT_LENGTH } from "@shared/schemas/note";
-import type { AttachAudioInput, CreateVoiceNoteInput, ExportNoteInput, LockStatus, Note } from "@shared/types/note";
+import type {
+  AttachAudioInput,
+  CreateVoiceNoteInput,
+  ExportNoteInput,
+  LockStatus,
+  Note,
+  OpenedAudio,
+} from "@shared/types/note";
 import type { Result } from "@shared/types/result";
 
 export type LoadState =
@@ -45,6 +53,8 @@ interface NotesStore {
   setSearch: (search: string) => void;
   createNote: () => Promise<void>;
   createVoiceNote: (input: CreateVoiceNoteInput) => Promise<Result<Note>>;
+  /** Asks for a recording made elsewhere, to transcribe; null if the user cancelled. */
+  pickRecording: () => Promise<Result<OpenedAudio | null>>;
   saveContent: (id: string, content: string, text: string) => Promise<Result<Note>>;
   /** Adds text as a new paragraph at the end of a note that isn't open in the editor. */
   appendText: (id: string, text: string) => Promise<void>;
@@ -71,7 +81,6 @@ interface NotesStore {
 
 const WAV_TYPE = "audio/wav";
 const EMPTY_TITLE = "<h1></h1>";
-const NO_MODEL = "No speech model is available yet. Check the status at the bottom of the sidebar.";
 const LOCKED: LockStatus = { hasPassword: false, unlocked: false };
 
 /** A locked note shows only its title until opened with the password. */
@@ -238,6 +247,8 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
       return result;
     },
 
+    pickRecording: () => invokeDesktop((api) => api.openAudioFile()),
+
     saveContent: (id, content, text) => {
       const current = get().notes.find((note) => note.id === id);
       // Nothing changed (the editor reported an update that wasn't an edit):
@@ -315,7 +326,7 @@ export const useNotesStore = create<NotesStore>()((set, get) => {
       if (get().transcribingIds.includes(id)) return;
       const model = selectedModel(useEngineStore.getState())?.model;
       if (!model) {
-        set({ actionError: NO_MODEL });
+        set({ actionError: currentMessages().errors.noModel });
         return;
       }
       set((state) => ({ transcribingIds: [...state.transcribingIds, id], actionError: null }));
