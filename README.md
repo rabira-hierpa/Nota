@@ -1,204 +1,275 @@
-# Nota · ማስታወሻ
+<p align="center">
+  <img src="build/icon-mac.png" alt="" width="128" height="128">
+</p>
 
-Amharic notes you can write or speak, modelled on [Bear](https://bear.app).
-Three columns: where to look (Notes, Favorites, Voice notes, Untagged, your
-tags, Trash), the notes there, and the open note in a rich-text editor.
-Everything stays on your machine.
+<h1 align="center">Nota · ማስታወሻ</h1>
 
-- **Write** with formatting: headings, bold, italic, underline, strikethrough,
-  highlight, lists, checklists, quotes, code blocks, and 15 fonts (Inter,
-  Roboto, Open Sans, Lato, Montserrat, Poppins, Plus Jakarta Sans, Lora,
-  Merriweather, Playfair Display, Source Serif, JetBrains Mono, and the
-  Amharic faces Noto Sans Ethiopic, Noto Serif Ethiopic and Abyssinica SIL).
-  Every Latin font falls back to a Ge'ez face, so Amharic never shows boxes.
-- **Tag** by typing `#tag` (or nested, `#work/meetings`) anywhere in a note.
-  Tags fill the sidebar; ⌘-click a tag in a note to see its notes.
-- **Find**: search the current list as you type, in Amharic or English; add
-  `#tag` to narrow it. Matches are highlighted.
-- **Favourite** notes with the star; **trash** them, restore them, or delete
-  them for good from the Trash.
-- **Speak**: the microphone in the list records a voice note that is
-  transcribed into a new note; **Dictate** in a note types your words at the
-  cursor after each pause while you keep talking.
-- Light and dark themes (or follow the system), under the gear at the bottom
-  of the sidebar, beside the microphone and speech-model choices.
+<p align="center">
+  Offline Amharic notes you can write or speak.<br>
+  Markdown editing, voice notes and live dictation, transcribed on your own computer.
+</p>
 
-Keyboard: ⌘N new note, ⌘F search, ⌘B/⌘I/⌘U bold, italic, underline. Like Bear,
-a new note starts with a title heading, and a note's first line is its title
-in the list.
+<p align="center">
+  <img src="docs/screenshots/notes-light.png" alt="Nota: the sidebar with sections and tags, the note list, and a note with a heading, a checklist, a quote and a tag" width="860">
+</p>
 
-The editor is [Tiptap](https://tiptap.dev) 3. The look comes from the
-[ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
-design system for a notes app ("Minimalism & Swiss", warm ink on paper) with
-Bear's red as the accent, and Plus Jakarta Sans for the interface.
+Nota is a desktop note-taking app for macOS, Windows and Linux, in the spirit of
+[Bear](https://bear.app). Write in Amharic or English with Markdown shortcuts,
+organise with `#tags` and `[[links]]`, and when typing is slow, speak: record
+a voice note, or dictate and watch the words appear after each pause. Speech
+is transcribed by **Hohe**, an Amharic speech model that runs locally. After a
+one-time setup, nothing needs the internet, and nothing leaves your computer.
 
-Two Amharic speech models run locally on the Python runtime that
-[VoiceStudio](https://github.com/debpalash/VoiceStudio) installs; pick one in
-settings. VoiceStudio's own speech engine is still available as an option
-(below).
+## Features
 
-## Requirements
+- **Markdown as you type.** `# ` heading, `- ` list, `[ ] ` checklist, `> `
+  quote, `**bold**`, `==highlight==`, ` ``` ` code and more turn into
+  formatting as you write, in a rich-text editor ([Tiptap](https://tiptap.dev)).
+- **15 fonts, Amharic first.** Inter, Roboto, Lora, Merriweather, Playfair
+  Display, JetBrains Mono and others, plus Noto Sans Ethiopic, Noto Serif
+  Ethiopic and Abyssinica SIL. Every Latin font falls back to a Ge'ez face, so
+  Amharic never shows as boxes. All fonts ship with the app.
+- **Organise like Bear.** Sections for Notes, Today, Todo, Favorites, Voice
+  notes and Untagged; nested tags (`#work/meetings`); pinning; an Archive; the
+  Trash; links between notes with backlinks; search in Amharic or English
+  (with `#tag` filters); sort by date edited, date created or title.
+- **Voice notes.** Record, and the transcript becomes a new note you can edit.
+  Play the recording back any time, or transcribe it again.
+- **Live dictation.** Speak into the open note; the text appears at the cursor
+  after each pause while you keep talking.
+- **Zen mode** (⌘⇧F): only the note on screen, for distraction-free writing
+  or dictation, with the current line kept in the middle.
+- **Locked notes.** Encrypt a note (and its recording) with a password: AES-256-GCM,
+  key derived with scrypt and held in memory only while unlocked.
+- **Export** a note as Markdown, a web page or plain text.
+- **Keyboard first.** A full menu bar and a shortcuts panel (⌘/).
+- **Light and dark**, in green and gold: Ethiopia's highland fields and the
+  Meskel daisy.
 
-- macOS on Apple Silicon (the model runs on the GPU; other setups fall back to
-  the CPU and are slower)
-- Node.js 22+
-- [VoiceStudio](https://github.com/debpalash/VoiceStudio) 0.5.7+ installed,
-  with its first-run setup finished (the app reuses its Python runtime)
-- About 5.5 GB of disk for both models (2.4 GB for Hohe alone), and 2.5 GB
-  (Hohe) or 4.5 GB (BuzzASR) of free memory while transcribing
-
-## The models
-
-| | **Hohe** (default) | **BuzzASR** |
+| Zen mode | Dark | Shortcuts |
 |---|---|---|
-| Model | [snapwre/hohe-asr-amharic](https://huggingface.co/snapwre/hohe-asr-amharic) | [BuzzASR/amharic](https://huggingface.co/BuzzASR/amharic) |
-| Kind | wav2vec2-BERT 600M + CTC: one pass over the audio | Whisper large-v3 (1.55B) fine-tune: writes text token by token |
-| Reported FLEURS Amharic error | 6.3% characters, 17.9% words (no language model) | ~12% characters, ~34% words |
-| A 19 s clip on an M-series GPU | 0.7 s | 4–7 s |
-| Memory while loaded | about 2.5 GB | 4.4 GB |
-| Licence | CC BY 4.0 (credit below) | MIT |
-| Weak spots (per its card) | spontaneous conversation (~47% word error), spells numbers out, no punctuation | can invent text for silence, slower |
+| ![Zen mode: only the note](docs/screenshots/zen-mode.png) | ![The dark theme](docs/screenshots/notes-dark.png) | ![The keyboard shortcuts panel](docs/screenshots/shortcuts.png) |
 
-On a test recording ("ሙከራ ሙከራ አንድ ሁለት ሶስት, ይህ አማርኛን ወደ ጽሁፍ የሚቀይር …")
-Hohe heard *አንድ ሁለት ሶስት*, *አማርኛን* and *አፕ* where BuzzASR wrote *አንዱ ለስላሳ
-ውስጥ*, *አማሪኛ* and *መጠን*. One recording is not a benchmark; switch models and
-press **Transcribe again** under a voice note to compare on your own voice
-(the bar says which model wrote the text).
+## Download
 
-Hohe's card also ships a 5-gram language model (`lm/`, 538 MB, worth about two
-points of word error on its test set). The app leaves it out: it needs a
-compiled `kenlm`, and on the test recording it changed only the spacing of one
-word.
+Get the latest build from [Releases](https://github.com/rabira-hierpa/nota/releases):
 
-## Set up the models
+| System | File |
+|---|---|
+| macOS, Apple silicon (M1 and later) | `Nota-<version>-mac-arm64.dmg` |
+| macOS, Intel | `Nota-<version>-mac-x64.dmg` |
+| Windows, x64 | `Nota-<version>-win-x64-setup.exe` (or the portable `.zip`) |
+| Windows, ARM64 | `Nota-<version>-win-arm64-setup.exe` (or `.zip`) |
+| Linux, x86-64 | `Nota-<version>-linux-x86_64.AppImage` (or `.tar.gz`) |
+| Linux, ARM64 | `Nota-<version>-linux-arm64.AppImage` (or `.tar.gz`) |
+
+**macOS:** the app is not notarised by Apple yet, so the first launch is
+blocked. Drag Nota to Applications, then either right-click it and choose
+**Open**, or run:
 
 ```bash
-npm run setup:amharic-model            # both
-npm run setup:amharic-model -- hohe    # or just one: hohe | buzzasr
+xattr -dr com.apple.quarantine /Applications/Nota.app
 ```
 
-This downloads each pinned model revision into the Hugging Face cache (once)
-and prepares a model folder in the app's data directory. The sidebar footer
-shows **Hohe ready** (or **BuzzASR ready**) for the chosen model, or explains
-what is missing.
+**Windows:** the installer is not signed yet, so SmartScreen warns on first
+run: choose **More info**, then **Run anyway**.
 
-### Why not VoiceStudio's Whisper?
-
-Stock Whisper (including large-v3, VoiceStudio's usual default) learned almost
-no Amharic. It writes Ge'ez letters that follow the sounds but are not words,
-and on auto-detect it often mistakes Amharic for Tibetan. On the FLEURS Amharic
-test set, large-v3 scores about **193% character error**.
-
-VoiceStudio can't run BuzzASR either: its Whisper engines always decode with
-timestamps, and BuzzASR was trained without them, so it returns no text. The
-app decodes both models itself
-([`electron/python/amharic_transcriber.py`](electron/python/amharic_transcriber.py)),
-picking the decoder from the model's `config.json`. BuzzASR runs without
-timestamps in float16 with eager attention (with PyTorch's default attention,
-half precision on Apple GPUs returns nothing); Hohe runs in float32. Long
-recordings are split at pauses into chunks under 30 s. A helper process starts
-when you press record or Dictate (a few seconds to load), exits after five
-idle minutes, and the other model's helper exits when you switch.
-
-The setup script also corrects BuzzASR's `generation_config.json`, which as
-published makes transformers 5.x drop its Whisper settings. The Hugging Face
-cache itself is left unchanged.
-
-## Voice notes and dictation
-
-The microphone button above the note list records a **voice note**: after
-Stop, the recording is saved as a new note and transcribed into it (the
-editor is read-only until the text arrives). The bar under a voice note plays
-it back, shows which model wrote the text, and can **Transcribe again** with
-the model you pick (it asks first, since that replaces the note's text).
-
-**Dictate** streams the microphone (an AudioWorklet at 16 kHz) through a pause
-detector: after 0.5 s of quiet, the speech since the last pause is sent to the
-chosen model and its text is typed at the cursor, or at the end of a note you
-haven't clicked into. The note keeps the audio of its first dictation, marked
-as already transcribed; if a piece couldn't be transcribed, the note says so
-and the audio waits for **Transcribe**. Leaving the note stops dictation and
-the last words still land in it. The first words wait for the model to load;
-after that the text keeps up with speech on either model.
-
-## Run it
+**Linux:** make the AppImage executable and run it:
 
 ```bash
+chmod +x Nota-*.AppImage && ./Nota-*.AppImage
+```
+
+If it closes at once on Ubuntu 24.04 or later (a sandbox restriction on
+AppImages), start it with `--no-sandbox`.
+
+On first launch, Nota opens its **setup guide**, which sets up offline speech
+for you (next section). Writing works right away without it.
+
+## Set up offline speech (Hohe)
+
+Nota transcribes with [Hohe](https://huggingface.co/snapwre/hohe-asr-amharic),
+an Amharic speech model. Setting it up downloads, once:
+
+- the model: 2.4 GB, into the Hugging Face cache (`~/.cache/huggingface`);
+- a private Python runtime for it: about 0.6 GB, in Nota's data folder.
+
+After that, transcription and dictation work with no internet connection.
+
+**You need** Python 3.10–3.13, or [uv](https://docs.astral.sh/uv/) (which
+fetches a Python by itself), plus about 4 GB of free disk space and 3 GB of
+free memory while transcribing.
+
+| System | Install Python if you don't have it |
+|---|---|
+| macOS | `brew install python@3.12`, or the installer from [python.org](https://www.python.org/downloads/) |
+| Windows | The installer from [python.org](https://www.python.org/downloads/) (tick *Add python.exe to PATH*) |
+| Ubuntu / Debian | `sudo apt install python3 python3-venv` |
+| macOS, Linux (uv) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Windows (uv) | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+
+### From the app
+
+Open the setup guide (it opens on first launch, and any time from
+**Settings → Setup guide**), go to **Offline speech** and press
+**Set up Hohe**. Progress shows as it runs, and the status turns to
+**Hohe ready** when it is done.
+
+<p align="center">
+  <img src="docs/screenshots/setup-guide.png" alt="The setup guide's Offline speech step, showing Hohe ready and the setup's progress" width="640">
+</p>
+
+### From a terminal
+
+In a clone of this repository:
+
+```bash
+npm run setup:hohe
+```
+
+This runs [`scripts/setup-amharic-model.sh`](scripts/setup-amharic-model.sh), or
+[`setup-amharic-model.ps1`](scripts/setup-amharic-model.ps1) on Windows (both
+also ship inside the app, in its resources folder). It:
+
+1. creates Nota's Python runtime in `<data folder>/python` (with `uv` if you
+   have it, or the first Python 3.10–3.13 it finds), and installs the pinned
+   packages in [`scripts/speech-requirements.txt`](scripts/speech-requirements.txt)
+   (PyTorch, transformers, huggingface_hub, NumPy; CPU-only PyTorch on Linux);
+2. downloads Hohe at a pinned revision into `<data folder>/models` (linked to
+   the Hugging Face cache on macOS and Linux, copied on Windows), using
+   [`scripts/setup_models.py`](scripts/setup_models.py);
+3. checks that the model loads, so problems show now rather than on your first
+   recording.
+
+Running it again is safe; it reuses what is already there. There's no need to
+restart Nota: it notices the model within a few seconds.
+
+| | Data folder |
+|---|---|
+| macOS | `~/Library/Application Support/Nota` |
+| Windows | `%APPDATA%\Nota` |
+| Linux | `~/.config/Nota` |
+
+**Optional: BuzzASR.** A second model, a Whisper large-v3 fine-tune (3.1 GB),
+slower and less accurate in our tests. `npm run setup:amharic-model -- buzzasr`
+adds it; pick it in **Settings → Speech model**.
+
+**Using another Python.** If you already have a Python environment with the
+packages, point Nota at it instead of building one:
+`NOTA_PYTHON=/path/to/python npm run setup:hohe` (and set `NOTA_PYTHON` for the
+app too). Nota also finds the runtime that [VoiceStudio](https://github.com/debpalash/VoiceStudio)
+installs on macOS, if you have it.
+
+**Trouble?**
+
+- *"Nota needs Python 3.10–3.13"*: install one (table above), then run the
+  setup again.
+- *Hohe shows "not set up" after the setup finished*: check that
+  `<data folder>/models/hohe-asr-amharic-217712d/model.safetensors` exists.
+- *Transcription fails on Linux*: run the setup from a terminal to see the
+  full output.
+
+## Run from source
+
+```bash
+git clone https://github.com/rabira-hierpa/nota.git
+cd nota
 npm install
-npm run setup:amharic-model
 npm run dev
 ```
 
-`npm run dev` starts the Next.js renderer on port 3123, rebuilds the Electron
-main process on change, and opens the app window. The first recording asks for
-microphone access; pick the microphone in settings (the gear at the bottom of
-the sidebar) if the default isn't the one you speak into.
+`npm run dev` starts the Next.js renderer, rebuilds the Electron main process
+on change, and opens the app. On first run the setup guide walks you through
+offline speech, the microphone, and Markdown; set up Hohe there, or with
+`npm run setup:hohe` before starting. Requires Node.js 22 or later.
 
-To run the production build instead:
+To run the production build: `npm run build && npm start`.
 
-```bash
-npm run build && npm start
-```
+## Using Nota
 
-To make a distributable (`release/`):
+| Do this | How |
+|---|---|
+| New note | ⌘N. Its first line is the title. |
+| Format | Type Markdown (`# `, `- `, `[ ] `, `> `, `**bold**`, `==mark==`, `` `code` ``, `---`), or use the toolbar |
+| Tag a note | Type `#tag` or `#parent/child` anywhere in it |
+| Link notes | Type `[[Another note's title]]`; ⌘-click it to open (or create) that note |
+| Record a voice note | The microphone above the note list, or ⌘⇧R; again to stop |
+| Dictate | **Dictate** in the note, or ⌘⇧D; text appears after each pause |
+| Distraction-free | ⌘⇧F for Zen mode; Escape to leave |
+| Lock a note | Note menu (•••) → **Lock note**; ⌘⌥L locks all again |
+| Export | Note menu → Markdown, Web page or Plain text |
+| Every shortcut | ⌘/ (Ctrl instead of ⌘ on Windows and Linux) |
 
-```bash
-npm run package
-```
+Locked notes use one app password. **There is no recovery**: without the
+password, nobody can open a locked note, including you.
+
+## Privacy and data
+
+Everything lives in Nota's data folder: one JSON file per note, plus a WAV for
+spoken notes. Nota makes no network requests while you use it: fonts ship with
+the app, and transcription runs on your machine with Hugging Face's offline
+mode switched on. The only downloads are the ones the speech setup makes, once.
+
+## The models
+
+| | **Hohe** (default) | **BuzzASR** (optional) |
+|---|---|---|
+| Model | [snapwre/hohe-asr-amharic](https://huggingface.co/snapwre/hohe-asr-amharic) | [BuzzASR/amharic](https://huggingface.co/BuzzASR/amharic) |
+| Kind | wav2vec2-BERT 600M + CTC: one pass over the audio | Whisper large-v3 (1.55B) fine-tune: writes text token by token |
+| Reported FLEURS Amharic error | 6.3% characters, 17.9% words | ~12% characters, ~34% words |
+| A 19 s clip on an M-series GPU | 0.7 s | 4–7 s |
+| Memory while loaded | about 2.5 GB | 4.4 GB |
+| Licence | CC BY 4.0 | MIT |
+| Weak spots (per its card) | spontaneous conversation, spells numbers out, no punctuation | can invent text for silence, slower |
+
+Stock Whisper (including large-v3) learned almost no Amharic: about **193%
+character error** on FLEURS Amharic. Nota decodes both models itself
+([`electron/python/amharic_transcriber.py`](electron/python/amharic_transcriber.py)).
+On Apple silicon it uses the GPU; elsewhere the CPU. Long recordings are split
+at pauses into chunks under 30 s, and the model's helper process exits after
+five idle minutes to free memory.
 
 ## Configuration
 
-Set these in the environment, or in a `.env` file (see `.env.example`):
+Optional, for development (environment variables, or a `.env` file; see
+`.env.example`):
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `STT_ENGINE` | (local models) | `voicestudio` sends recordings to VoiceStudio's engine instead |
-| `HOHE_MODEL_DIR` | `<user data>/models/hohe-asr-amharic-217712d` | Prepared Hohe folder |
-| `BUZZASR_MODEL_DIR` | `<user data>/models/BuzzASR-amharic-3002b3f` | Prepared BuzzASR folder |
-| `VOICESTUDIO_PYTHON` | VoiceStudio's runtime interpreter | Python that runs the model |
-| `VOICESTUDIO_URL` | `http://127.0.0.1:3900` | VoiceStudio speech API (`STT_ENGINE=voicestudio`) |
-| `OMNIVOICE_API_KEY` | (none) | Bearer key for a remote VoiceStudio |
+| Variable | Purpose |
+|---|---|
+| `NOTA_PYTHON` | Python that runs the model (default: Nota's own runtime) |
+| `HOHE_MODEL_DIR`, `BUZZASR_MODEL_DIR` | Model folders (default: in the data folder) |
+| `STT_ENGINE=voicestudio` | Use VoiceStudio's speech API instead of the local models |
+| `VOICESTUDIO_URL`, `OMNIVOICE_API_KEY` | Where VoiceStudio is, and its key if remote |
 
-Notes (one JSON file each, plus a WAV for voice notes) and the model folders
-live in the app's data folder, `~/Library/Application Support/Nota` on macOS.
-
-### Coming from "Amharic Speech to Text"
-
-Nota is the same app, renamed. On its first launch it renames the old data
-folder (`~/Library/Application Support/Amharic Speech to Text`) to `Nota`, so
-the models, recordings and settings come along without copying gigabytes, and
-turns each recording into a note (same time, text and audio). The original
-`recordings/` folder is left as it was, as a backup. Quit the old app before
-starting Nota.
-
-## Checks
+## Build a release
 
 ```bash
-npm run typecheck && npm run lint && npm test
-npm run test:e2e
+npm run package:mac     # DMG and zip, Apple silicon and Intel, in release/
+npm run package:win     # installer and zip, x64 and ARM64
+npm run package:linux   # AppImage and tar.gz, x86-64 and ARM64
 ```
 
-Unit tests cover the notes repository, the import of old recordings and the
-data-folder move, tags, search, the note list's sections, the stores, the model
-helper's process handling with a fake helper, the pause detector, and
-dictation into a note. The e2e suite builds the app, then drives it with
-Chromium's fake microphone and a fake VoiceStudio: writing, tagging,
-favouriting, searching, trashing and relaunching; fonts and formatting; voice
-note → transcribe → play → relaunch; the engine-offline path; silent
-microphones; dictation into a note (with a microphone that speaks in phrases);
-and the move from the old app's folder.
+Mac builds are ad-hoc signed (not notarised); Windows builds are unsigned.
+All three can be built on a Mac.
 
-## How it is built
+## Development
 
-Electron main process (`electron/`) + Next.js static export renderer (`src/`),
-sharing a Zod-validated IPC contract (`shared/`). File organisation and
-architecture follow the Dandii app's rules; see [CLAUDE.md](CLAUDE.md) and
-[`.claude/rules/`](.claude/rules).
+```bash
+npm run typecheck && npm run lint && npm test   # types, lint, unit tests
+npm run test:e2e                                # builds, then drives the app
+```
+
+Electron main process (`electron/`), a Next.js static export as the renderer
+(`src/`), and a Zod-validated IPC contract between them (`shared/`). See
+[CLAUDE.md](CLAUDE.md) for the architecture and [`.claude/rules/`](.claude/rules)
+for the conventions.
 
 ## Credits
 
-Hohe ASR (`snapwre/hohe-asr-amharic`) is by Chapi and the Dataset.ET
-contributors, licensed CC BY 4.0, fine-tuned from
-`badrex/Ethio-ASR-multilingual-600M` (CC BY 4.0). BuzzASR/amharic is MIT
-licensed. Neither model is bundled with the app; the setup script downloads
-them from Hugging Face.
+- **Hohe ASR** (`snapwre/hohe-asr-amharic`) by Chapi and the Dataset.ET
+  contributors, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
+  fine-tuned from `badrex/Ethio-ASR-multilingual-600M` (CC BY 4.0).
+- **BuzzASR/amharic**, MIT licensed.
+- Neither model is bundled; the setup downloads them from Hugging Face.
+- Fonts from Google Fonts under the SIL Open Font License; icons from
+  [Untitled UI](https://www.untitledui.com/icons); editor by [Tiptap](https://tiptap.dev).

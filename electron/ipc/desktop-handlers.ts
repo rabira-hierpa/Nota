@@ -2,8 +2,10 @@ import { NoteNotFoundError, NoteStateError } from "@main/lib/notes-repo";
 import type { NotesRepo } from "@main/lib/notes-repo";
 import { PasswordExistsError, VaultLockedError, WrongPasswordError } from "@main/lib/note-vault";
 import type { NoteVault } from "@main/lib/note-vault";
+import type { ModelSetup } from "@main/lib/model-setup";
+import type { Onboarding } from "@main/lib/onboarding";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
-import { modelIdSchema } from "@shared/schemas/engine";
+import { localModelIdSchema, modelIdSchema } from "@shared/schemas/engine";
 import {
   attachAudioInputSchema,
   createNoteInputSchema,
@@ -33,6 +35,7 @@ export const HANDLER_ERRORS = {
   locked: "Locked notes need your password. Unlock them, then try again.",
   wrongPassword: "That password isn't right.",
   noModel: "That speech model isn't available. Pick another one.",
+  setupRunning: "A setup is already running. Wait for it to finish.",
   generic: "Something went wrong. Try again.",
 } as const;
 
@@ -47,6 +50,8 @@ export interface HandlerDeps {
   engines: Engines;
   vault: NoteVault;
   saveExport: SaveExport;
+  setup: ModelSetup;
+  onboarding: Onboarding;
 }
 
 const MAX_STORED_ERROR_LENGTH = 500;
@@ -56,7 +61,7 @@ const CLIP_FILE_NAME = "dictation.wav";
  * The main-process side of `window.desktop`. Arguments are typed by the
  * contract but arrive from another process, so every one is parsed again.
  */
-export function createDesktopHandlers({ repo, engines, vault, saveExport }: HandlerDeps): DesktopApi {
+export function createDesktopHandlers({ repo, engines, vault, saveExport, setup, onboarding }: HandlerDeps): DesktopApi {
   /** The engine about to run; the others let go of their memory while idle. */
   function engineFor(model: ModelId): TranscriptionEngine | null {
     const engine = engines.get(model);
@@ -101,7 +106,9 @@ export function createDesktopHandlers({ repo, engines, vault, saveExport }: Hand
     setLockPassword: (password) => withValid(passwordSchema, password, (valid) => vault.setPassword(valid)),
     unlockNotes: (password) => withValid(passwordSchema, password, (valid) => vault.unlock(valid)),
     lockNotes: () =>
-      attempt(() => {
+      attempt(async () => {
+        // Let saves already sent (an editor closing as the notes lock) seal first.
+        await repo.flush();
         vault.lock();
         return vault.status();
       }),
@@ -135,6 +142,23 @@ export function createDesktopHandlers({ repo, engines, vault, saveExport }: Hand
       engine.prepare?.();
       return Promise.resolve({ success: true, data: null });
     },
+    startModelSetup: (model) => {
+      const parsed = localModelIdSchema.safeParse(model);
+      if (!parsed.success) return invalid();
+      return Promise.resolve(
+        setup.start(parsed.data) ? { success: true, data: null } : { success: false, error: HANDLER_ERRORS.setupRunning },
+      );
+    },
+    cancelModelSetup: () => {
+      setup.cancel();
+      return Promise.resolve({ success: true, data: null });
+    },
+    getOnboarding: () => attempt(async () => ({ show: await onboarding.shouldShow() })),
+    completeOnboarding: () =>
+      attempt(async () => {
+        await onboarding.complete();
+        return null;
+      }),
   };
 }
 

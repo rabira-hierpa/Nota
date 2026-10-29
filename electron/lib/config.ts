@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
@@ -5,7 +6,8 @@ import type { ModelId } from "@shared/types/engine";
 
 export const DEFAULT_VOICESTUDIO_URL = "http://127.0.0.1:3900";
 
-export type LocalModelId = Exclude<ModelId, "voicestudio">;
+export type { LocalModelId } from "@shared/types/engine";
+import type { LocalModelId } from "@shared/types/engine";
 
 interface LocalModelSpec {
   /** Built by scripts/setup-amharic-model.sh in the app's user-data directory; keep in step with it. */
@@ -29,7 +31,12 @@ export const LOCAL_MODELS: Record<LocalModelId, LocalModelSpec> = {
   },
 };
 
-/** VoiceStudio installs its Python runtime here on macOS; the helper reuses it. */
+/** Nota's own speech runtime, made by the setup script inside the data folder (a venv). */
+function runtimePython(platform: NodeJS.Platform): string {
+  return platform === "win32" ? path.join("python", "Scripts", "python.exe") : path.join("python", "bin", "python");
+}
+
+/** VoiceStudio installs a Python runtime with the same packages on macOS; used if Nota has none. */
 const VOICESTUDIO_PYTHON = path.join(
   os.homedir(),
   "Library/Application Support/VoiceStudio/runtime/project/.venv/bin/python",
@@ -72,15 +79,34 @@ export function readAvailableModels(env: Env = process.env): ModelId[] {
   return env.STT_ENGINE?.trim() === "voicestudio" ? ["voicestudio"] : ["hohe", "buzzasr"];
 }
 
+/**
+ * The Python that runs the model: NOTA_PYTHON (or the older VOICESTUDIO_PYTHON)
+ * if set, else Nota's own runtime, else VoiceStudio's if it is installed.
+ * When none exists yet, Nota's own path: the model shows as not set up.
+ */
+export function resolvePython(
+  userData: string,
+  env: Env = process.env,
+  exists: (file: string) => boolean = existsSync,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const chosen = env.NOTA_PYTHON?.trim() || env.VOICESTUDIO_PYTHON?.trim();
+  if (chosen) return chosen;
+  const own = path.join(userData, runtimePython(platform));
+  if (exists(own)) return own;
+  return exists(VOICESTUDIO_PYTHON) ? VOICESTUDIO_PYTHON : own;
+}
+
 export function readLocalModelConfig(
   model: LocalModelId,
   places: { userData: string; helperDir: string },
   env: Env = process.env,
+  exists: (file: string) => boolean = existsSync,
 ): LocalModelConfig {
   const spec = LOCAL_MODELS[model];
   return {
     model,
-    python: env.VOICESTUDIO_PYTHON?.trim() || VOICESTUDIO_PYTHON,
+    python: resolvePython(places.userData, env, exists),
     script: path.join(places.helperDir, "amharic_transcriber.py"),
     modelDir: env[spec.dirEnv]?.trim() || path.join(places.userData, "models", spec.folder),
     requiredFiles: spec.requiredFiles,

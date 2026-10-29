@@ -4,7 +4,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDesktopHandlers, HANDLER_ERRORS } from "@main/ipc/desktop-handlers";
 import type { Engines } from "@main/ipc/desktop-handlers";
+import { ModelSetup } from "@main/lib/model-setup";
 import { NoteVault } from "@main/lib/note-vault";
+import { Onboarding } from "@main/lib/onboarding";
 import { NotesRepo } from "@main/lib/notes-repo";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import type { ModelId } from "@shared/types/engine";
@@ -42,6 +44,9 @@ function handlers() {
       exported.push(input);
       return true;
     },
+    // A setup script that does nothing; the runner itself is tested on its own.
+    setup: new ModelSetup(dir, dir, () => undefined),
+    onboarding: new Onboarding(path.join(dir, "onboarded"), async () => (await repo.list()).length > 0, false),
   });
 }
 
@@ -182,5 +187,20 @@ describe("createDesktopHandlers", () => {
     expect(await api.exportNote({ title: "ሰላም", format: "md", data: "# ሰላም" })).toEqual({ success: true, data: { saved: true } });
     expect(await api.exportNote({ title: "x", format: "exe" as "md", data: "" })).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
     expect(exported).toEqual([{ title: "ሰላም", format: "md", data: "# ሰላም" }]);
+  });
+
+  it("starts a known model's setup only, one at a time", async () => {
+    const api = handlers();
+
+    expect(await api.startModelSetup("gpt" as "hohe")).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
+    expect(await api.startModelSetup("voicestudio" as "hohe")).toEqual({ success: false, error: HANDLER_ERRORS.invalid });
+  });
+
+  it("shows the setup guide on a fresh install until it is completed", async () => {
+    const api = handlers();
+
+    expect(await api.getOnboarding()).toEqual({ success: true, data: { show: true } });
+    await api.completeOnboarding();
+    expect(await api.getOnboarding()).toEqual({ success: true, data: { show: false } });
   });
 });

@@ -1,5 +1,5 @@
 import type { CommandId } from "@shared/keymap";
-import type { ModelId, ModelStatus } from "@shared/types/engine";
+import type { LocalModelId, ModelId, ModelStatus, SetupEvent } from "@shared/types/engine";
 import type {
   AttachAudioInput,
   CreateNoteInput,
@@ -55,10 +55,18 @@ export interface DesktopApi {
   listModels(): Promise<Result<ModelStatus[]>>;
   /** Starts loading a model before its first request, so speech isn't kept waiting. */
   prepareModel(model: ModelId): Promise<Result<null>>;
+  /** Sets a model up (runtime and download, once); progress arrives through onSetupEvent. */
+  startModelSetup(model: LocalModelId): Promise<Result<null>>;
+  cancelModelSetup(): Promise<Result<null>>;
+  /** Whether to show the setup guide now (a fresh install that hasn't finished it). */
+  getOnboarding(): Promise<Result<{ show: boolean }>>;
+  completeOnboarding(): Promise<Result<null>>;
 }
 
 /** Messages from the main process: menu commands, and "lock everything" when the Mac sleeps. */
 export interface DesktopEvents {
   /** Returns a function that stops listening. */
   onCommand(listener: (command: CommandId) => void): () => void;
+  /** Output from a model setup started with startModelSetup, then whether it worked. */
+  onSetupEvent(listener: (event: SetupEvent) => void): () => void;
 }

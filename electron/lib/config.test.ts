@@ -6,6 +6,7 @@ import {
   readAvailableModels,
   readLocalModelConfig,
   readVoiceStudioConfig,
+  resolvePython,
 } from "@main/lib/config";
 
 describe("readVoiceStudioConfig", () => {
@@ -37,10 +38,10 @@ describe("readLocalModelConfig", () => {
   const places = { userData: "/data", helperDir: "/app/python" };
 
   it("finds the helper beside the app and each model in user data", () => {
-    const hohe = readLocalModelConfig("hohe", places, {});
+    const hohe = readLocalModelConfig("hohe", places, {}, () => false);
     expect(hohe.script).toBe(path.join("/app/python", "amharic_transcriber.py"));
     expect(hohe.modelDir).toBe(path.join("/data", "models", LOCAL_MODELS.hohe.folder));
-    expect(hohe.python).toMatch(/VoiceStudio\/runtime\/project\/\.venv\/bin\/python$/);
+    expect(hohe.python).toBe(path.join("/data", "python", "bin", "python"));
     expect(readLocalModelConfig("buzzasr", places, {}).modelDir).toBe(
       path.join("/data", "models", LOCAL_MODELS.buzzasr.folder),
     );
@@ -50,5 +51,23 @@ describe("readLocalModelConfig", () => {
     const env = { VOICESTUDIO_PYTHON: "/py", HOHE_MODEL_DIR: "/hohe", BUZZASR_MODEL_DIR: "/buzz" };
     expect(readLocalModelConfig("hohe", places, env)).toMatchObject({ python: "/py", modelDir: "/hohe" });
     expect(readLocalModelConfig("buzzasr", places, env).modelDir).toBe("/buzz");
+  });
+});
+
+describe("resolvePython", () => {
+  const own = path.join("/data", "python", "bin", "python");
+
+  it("prefers an explicit Python, then Nota's own runtime, then VoiceStudio's", () => {
+    expect(resolvePython("/data", { NOTA_PYTHON: "/py" }, () => true)).toBe("/py");
+    expect(resolvePython("/data", {}, (file) => file === own)).toBe(own);
+    expect(resolvePython("/data", {}, (file) => file.includes("VoiceStudio"))).toMatch(/VoiceStudio/);
+  });
+
+  it("points at Nota's own runtime when nothing is set up yet", () => {
+    expect(resolvePython("/data", {}, () => false)).toBe(own);
+  });
+
+  it("looks in the venv's Scripts folder on Windows", () => {
+    expect(resolvePython("/data", {}, () => false, "win32")).toBe(path.join("/data", "python", "Scripts", "python.exe"));
   });
 });

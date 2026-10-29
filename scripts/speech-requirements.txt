@@ -1,0 +1,6 @@
+# Nota's speech runtime: what electron/python/amharic_transcriber.py needs.
+# Pinned to the versions Hohe and BuzzASR were verified with (Python 3.10–3.13).
+torch==2.8.0
+transformers==5.15.1
+huggingface_hub==1.28.0
+numpy==2.2.6

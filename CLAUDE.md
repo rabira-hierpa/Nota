@@ -26,7 +26,12 @@ offer:
 - `hohe` (default) and `buzzasr`: `AmharicModelEngine` runs
   snapwre/hohe-asr-amharic (wav2vec2-BERT CTC) or BuzzASR/amharic (Whisper
   large-v3 fine-tune) through `electron/python/amharic_transcriber.py` on
-  VoiceStudio's installed Python runtime. Set up with `npm run setup:amharic-model`.
+  Nota's own Python runtime (`<data>/python`, from `scripts/speech-requirements.txt`;
+  `resolvePython` in `config.ts` falls back to `NOTA_PYTHON`, then VoiceStudio's
+  runtime). `scripts/setup-amharic-model.sh` builds the runtime and downloads
+  the model (`npm run setup:hohe`); the app runs the same script from its
+  setup guide (`model-setup.ts`, progress over `SETUP_CHANNEL`). After setup
+  everything is offline (the helper runs with `HF_HUB_OFFLINE=1`).
   Using one model releases the other's helper (memory).
 - `voicestudio` (only when `STT_ENGINE=voicestudio`, as in e2e):
   `VoiceStudioClient` posts to [VoiceStudio](https://github.com/debpalash/VoiceStudio)'s
@@ -56,6 +61,20 @@ Design: ui-ux-pro-max's "Minimalism & Swiss" with its notes-app palette (warm
 ink on paper) and Bear's red accent; semantic colour tokens in
 `src/styles/globals.css` switch for dark mode (`data-theme`, or the system).
 Interface font Plus Jakarta Sans; all fonts in `src/lib/fonts.ts`.
+
+Other features and where they live: pin/archive/lock fields on the note
+(`shared/schemas/note.ts`, older files default them); locked notes are sealed
+by `NoteVault` (scrypt key held in memory, AES-256-GCM; the repo stores only
+the title in clear, and `view()` returns the open body while unlocked);
+keyboard shortcuts come from one table, `shared/keymap.ts`, which builds the
+native menu (`app-menu.ts`, commands sent over `COMMAND_CHANNEL`) and the
+shortcuts panel, and the renderer routes each command through
+`lib/command-bus.ts` to whichever component owns it; Zen mode is
+`html[data-zen]` CSS; the setup guide shows on a fresh install
+(`onboarding.ts`; e2e sets `NOTA_ONBOARDING=off`). Releases:
+`npm run package:mac` / `package:linux` (electron-builder, ad-hoc signed,
+`node_modules` excluded since the main bundle is self-contained); the app icon
+is `build/icon.png` (`build/icon-mac.png` is the rounded macOS version).
 
 Conventions are carried over from the Dandii app (`~/rz-codes/menged`):
 feature folders, one component per folder, Zustand stores, `@/` aliases,
@@ -90,7 +109,8 @@ Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desk
 | `npm run typecheck` / `npm run lint` / `npm test` | Checks (all must pass) |
 | `npm run test:e2e` | Build, then drive the app with a fake mic and a fake VoiceStudio |
 | `npm run package` | Build a distributable with electron-builder |
-| `npm run setup:amharic-model [-- hohe\|buzzasr]` | Download the pinned models and build their folders |
+| `npm run setup:hohe` | Build the speech runtime and download Hohe (`setup:amharic-model -- buzzasr\|all` for the others) |
+| `npm run package:mac` / `package:linux` | Release builds in `release/` |
 
 ## Rules
 

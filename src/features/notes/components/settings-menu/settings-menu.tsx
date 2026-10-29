@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
-import { Keyboard01, Lock01, Settings01 } from "@untitledui/icons";
+import { BookOpen01, Keyboard01, Lock01, Settings01 } from "@untitledui/icons";
 import { MicrophoneSelect } from "@/features/notes/components/microphone-select";
 import { ModelSelect } from "@/features/notes/components/model-select";
 import { ThemeSwitch } from "@/features/notes/components/theme-switch";
 import { onCommand } from "@/features/notes/lib/command-bus";
 import { useDictationStore } from "@/features/notes/stores/dictation-store";
 import { useNotesStore } from "@/features/notes/stores/notes-store";
+import { useOnboardingStore } from "@/features/notes/stores/onboarding-store";
 import { useViewStore } from "@/features/notes/stores/view-store";
 
 const ROW_BUTTON =
@@ -26,6 +27,7 @@ export function SettingsMenu() {
   const lockNotes = useNotesStore((state) => state.lockNotes);
   const openPasswordDialog = useViewStore((state) => state.openPasswordDialog);
   const setShortcutsOpen = useViewStore((state) => state.setShortcutsOpen);
+  const showGuide = useOnboardingStore((state) => state.show);
 
   useEffect(() => onCommand("openSettings", () => popoverRef.current?.showPopover()), []);
 
@@ -97,6 +99,17 @@ export function SettingsMenu() {
           <Keyboard01 className="size-4 text-muted" aria-hidden />
           <span className="flex-1">Keyboard shortcuts</span>
           <kbd className="font-sans text-xs text-muted">⌘/</kbd>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            popoverRef.current?.hidePopover();
+            showGuide();
+          }}
+          className={ROW_BUTTON}
+        >
+          <BookOpen01 className="size-4 text-muted" aria-hidden />
+          Setup guide (offline speech)
         </button>
       </div>
     </>

@@ -1,117 +1,129 @@
 #!/usr/bin/env bash
-# Set up the Amharic speech models the app transcribes with.
+# Set up offline Amharic speech for Nota: a private Python runtime, and the
+# speech model(s), downloaded once. After this, Nota transcribes and
+# dictates without a network connection. (Windows: setup-amharic-model.ps1.)
 #
-# usage: scripts/setup-amharic-model.sh [all|hohe|buzzasr]   (default: all)
+# usage: scripts/setup-amharic-model.sh [hohe|buzzasr|all]   (default: hohe)
 #
-# Stock Whisper (VoiceStudio's engine) barely knows Amharic (~193% character
-# error on FLEURS). The app offers two fine-tuned models instead, run through
-# electron/python/amharic_transcriber.py on VoiceStudio's Python runtime, so
-# VoiceStudio must be installed:
-#
-#   hohe     snapwre/hohe-asr-amharic, wav2vec2-BERT + CTC (2.4 GB, CC BY 4.0)
+#   hohe     snapwre/hohe-asr-amharic, wav2vec2-BERT + CTC (2.4 GB, CC BY 4.0).
+#            Recommended: the more accurate and about ten times faster.
 #   buzzasr  BuzzASR/amharic, a Whisper large-v3 fine-tune (3.1 GB, MIT)
 #
-# Each is downloaded at a pinned revision into the Hugging Face cache (once)
-# and linked into a model folder in the app's data directory; the cache itself
-# is left untouched. Hohe's optional 5-gram language model (lm/, 538 MB) is
-# skipped: the app decodes without it. BuzzASR's published
-# generation_config.json carries "_from_model_config": true (saved by
-# transformers 4.57), and transformers 5.x then drops every Whisper setting
-# (no_timestamps_token_id, lang_to_id, task_to_id), so its folder holds a
-# corrected copy.
+# The runtime is a Python virtual environment in Nota's data folder, built
+# from scripts/speech-requirements.txt (about 1 GB). It needs Python 3.10–3.13,
+# or uv (https://docs.astral.sh/uv/), which can fetch a Python itself.
+# Models download at pinned revisions into the Hugging Face cache and are
+# linked into Nota's data folder by setup_models.py, which also checks they load.
 #
-# Overrides: VOICESTUDIO_PYTHON, HOHE_MODEL_DIR, BUZZASR_MODEL_DIR. Keep the
-# default folder names in step with LOCAL_MODELS in electron/lib/config.ts.
+# Nota runs this same script from its setup guide (with NOTA_DATA_DIR set).
+#
+# Overrides:
+#   NOTA_DATA_DIR      Nota's data folder (default: the app's, per system)
+#   NOTA_PYTHON        an existing Python that already has the requirements
+#   HOHE_MODEL_DIR, BUZZASR_MODEL_DIR   where to put each model folder
 set -euo pipefail
 
-VS_PYTHON="${VOICESTUDIO_PYTHON:-$HOME/Library/Application Support/VoiceStudio/runtime/project/.venv/bin/python}"
-# Nota's data folder. Before the rename it was "Amharic Speech to Text"; until
-# Nota's first launch moves it across (electron/lib/data-folder.ts), set up there.
-APP_SUPPORT="$HOME/Library/Application Support"
-if [[ ! -d "$APP_SUPPORT/Nota" && -d "$APP_SUPPORT/Amharic Speech to Text" ]]; then
-  MODELS_DIR="$APP_SUPPORT/Amharic Speech to Text/models"
-else
-  MODELS_DIR="$APP_SUPPORT/Nota/models"
-fi
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REQUIREMENTS="$HERE/speech-requirements.txt"
+# Apps opened from the Dock or a launcher get a minimal PATH; look where
+# Homebrew, python.org and uv install too.
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.cargo/bin"
 
-if [[ ! -x "$VS_PYTHON" ]]; then
-  echo "VoiceStudio's Python runtime wasn't found at $VS_PYTHON." >&2
-  echo "Install VoiceStudio and finish its first-run setup, or set VOICESTUDIO_PYTHON." >&2
-  exit 1
-fi
-
-# fetch <repo> <revision> [pattern...]: downloads (once) and prints the snapshot path.
-fetch() {
-  "$VS_PYTHON" -I -c '
-import sys
-from huggingface_hub import snapshot_download
-print(snapshot_download(sys.argv[1], revision=sys.argv[2], allow_patterns=sys.argv[3:] or None))
-' "$@"
+default_data_dir() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    local support="$HOME/Library/Application Support"
+    # Before the rename the folder was "Amharic Speech to Text"; Nota's first
+    # launch moves it across (electron/lib/data-folder.ts).
+    if [[ ! -d "$support/Nota" && -d "$support/Amharic Speech to Text" ]]; then
+      echo "$support/Amharic Speech to Text"
+    else
+      echo "$support/Nota"
+    fi
+  else
+    echo "${XDG_CONFIG_HOME:-$HOME/.config}/Nota"
+  fi
 }
 
-# link_files <snapshot> <model_dir> [skip]: links the snapshot's top-level files.
-link_files() {
-  local snapshot=$1 dir=$2 skip=${3:-} file name
-  mkdir -p "$dir"
-  for file in "$snapshot"/*; do
-    name=$(basename "$file")
-    [[ -f "$file" && "$name" != "$skip" ]] || continue
-    ln -sfn "$file" "$dir/$name"
+DATA_DIR="${NOTA_DATA_DIR:-$(default_data_dir)}"
+MODELS_DIR="$DATA_DIR/models"
+RUNTIME="$DATA_DIR/python"
+
+# A Python between 3.10 and 3.13 on this machine, or nothing.
+find_python() {
+  local candidate
+  for candidate in python3.12 python3.11 python3.13 python3.10 python3; do
+    if command -v "$candidate" >/dev/null 2>&1 &&
+      "$candidate" -c 'import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] <= (3, 13) else 1)' 2>/dev/null; then
+      command -v "$candidate"
+      return 0
+    fi
   done
+  return 1
 }
 
-setup_hohe() {
-  local revision=217712df448adc0956b2d1b3f13bc30466c8733b
-  local dir="${HOHE_MODEL_DIR:-$MODELS_DIR/hohe-asr-amharic-${revision:0:7}}"
-  echo "Fetching snapwre/hohe-asr-amharic@${revision:0:7} (about 2.4 GB the first time)…"
-  link_files "$(fetch snapwre/hohe-asr-amharic "$revision" "*.json" "model.safetensors")" "$dir"
-
-  # Fail now, not on the first recording, if transformers can't read it.
-  "$VS_PYTHON" -I -c '
-import sys, warnings
-warnings.filterwarnings("ignore")
-from transformers import AutoConfig, AutoProcessor
-AutoProcessor.from_pretrained(sys.argv[1])
-model_type = AutoConfig.from_pretrained(sys.argv[1]).model_type
-sys.exit(0 if model_type == "wav2vec2-bert" else f"unexpected model type {model_type}")
-' "$dir"
-  echo "Hohe ready: $dir"
+has_requirements() {
+  "$1" -I -c 'import torch, transformers, huggingface_hub, numpy' >/dev/null 2>&1
 }
 
-setup_buzzasr() {
-  local revision=3002b3f5c907d2283255c0226398513b812cca49
-  local dir="${BUZZASR_MODEL_DIR:-$MODELS_DIR/BuzzASR-amharic-${revision:0:7}}"
-  local snapshot
-  echo "Fetching BuzzASR/amharic@${revision:0:7} (about 3.1 GB the first time)…"
-  snapshot=$(fetch BuzzASR/amharic "$revision")
-  link_files "$snapshot" "$dir" generation_config.json
-  "$VS_PYTHON" -I -c '
-import json, sys
-config = json.load(open(sys.argv[1], encoding="utf-8"))
-config.pop("_from_model_config", None)
-with open(sys.argv[2], "w", encoding="utf-8") as out:
-    json.dump(config, out, indent=2)
-    out.write("\n")
-' "$snapshot/generation_config.json" "$dir/generation_config.json"
-
-  "$VS_PYTHON" -I -c '
-import sys, warnings
-warnings.filterwarnings("ignore")
-from transformers import GenerationConfig
-config = GenerationConfig.from_pretrained(sys.argv[1])
-missing = [key for key in ("no_timestamps_token_id", "lang_to_id") if not hasattr(config, key)]
-sys.exit(f"generation config still missing {missing}" if missing else 0)
-' "$dir"
-  echo "BuzzASR ready: $dir"
+install_requirements() {
+  local python=$1
+  # On Linux the default torch wheel bundles CUDA (several GB); Nota runs on the CPU there.
+  local torch_index=()
+  [[ "$(uname -s)" == "Linux" ]] && torch_index=(--extra-index-url https://download.pytorch.org/whl/cpu)
+  if command -v uv >/dev/null 2>&1; then
+    uv pip install --python "$python" ${torch_index[@]+"${torch_index[@]}"} -r "$REQUIREMENTS"
+  else
+    "$python" -m pip install --upgrade pip
+    "$python" -m pip install ${torch_index[@]+"${torch_index[@]}"} -r "$REQUIREMENTS"
+  fi
 }
 
-case "${1:-all}" in
-  all) setup_hohe && setup_buzzasr ;;
-  hohe) setup_hohe ;;
-  buzzasr) setup_buzzasr ;;
+# The Python Nota runs the model with: NOTA_PYTHON, or a runtime of its own.
+prepare_python() {
+  if [[ -n "${NOTA_PYTHON:-}" ]]; then
+    PYTHON="$NOTA_PYTHON"
+    has_requirements "$PYTHON" || { echo "NOTA_PYTHON ($PYTHON) is missing torch, transformers or huggingface_hub." >&2; exit 1; }
+    return
+  fi
+  PYTHON="$RUNTIME/bin/python"
+  if [[ -x "$PYTHON" ]] && has_requirements "$PYTHON"; then
+    echo "Speech runtime already installed: $RUNTIME"
+    return
+  fi
+  echo "Creating Nota's speech runtime in $RUNTIME (about 1 GB, once)…"
+  mkdir -p "$DATA_DIR"
+  if command -v uv >/dev/null 2>&1; then
+    uv venv --python 3.12 "$RUNTIME"
+  else
+    local base
+    if ! base=$(find_python); then
+      cat >&2 <<'HELP'
+Nota needs Python 3.10–3.13 (or uv) once, to set up offline speech.
+  macOS:  brew install python@3.12      (or https://www.python.org/downloads/)
+  Ubuntu: sudo apt install python3 python3-venv
+  Or install uv, which brings its own Python: https://docs.astral.sh/uv/
+Then run this again.
+HELP
+      exit 1
+    fi
+    "$base" -m venv "$RUNTIME"
+  fi
+  install_requirements "$PYTHON"
+  has_requirements "$PYTHON" || { echo "The speech runtime didn't install cleanly; run this again." >&2; exit 1; }
+}
+
+choice="${1:-hohe}"
+case "$choice" in
+  all | hohe | buzzasr) ;;
   *)
-    echo "usage: $0 [all|hohe|buzzasr]" >&2
+    echo "usage: $0 [hohe|buzzasr|all]" >&2
     exit 2
     ;;
 esac
-echo "Restart the app (npm run dev) if it is running, then pick the model in the sidebar."
+
+prepare_python
+models=("$choice")
+[[ "$choice" == "all" ]] && models=(hohe buzzasr)
+# Downloads, links into the models folder (no second copy) and checks each model.
+"$PYTHON" -I "$HERE/setup_models.py" --link "$MODELS_DIR" "${models[@]}"
+echo "Done. Speech now works offline. If Nota is open, it picks the model up within a few seconds."

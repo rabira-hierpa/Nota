@@ -25,7 +25,14 @@ export const IPC_CHANNELS = {
   transcribeClip: "dictation:transcribe-clip",
   listModels: "models:list",
   prepareModel: "models:prepare",
+  startModelSetup: "setup:start",
+  cancelModelSetup: "setup:cancel",
+  getOnboarding: "onboarding:get",
+  completeOnboarding: "onboarding:complete",
 } as const satisfies Record<keyof DesktopApi, string>;
 
 /** Main → renderer: a menu command (or the system asking to lock the notes). */
 export const COMMAND_CHANNEL = "app:command";
+
+/** Main → renderer: a line of model-setup output, or its end. */
+export const SETUP_CHANNEL = "setup:event";

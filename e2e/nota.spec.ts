@@ -30,6 +30,8 @@ async function launch(
       STT_ENGINE: "voicestudio",
       VOICESTUDIO_URL: voiceStudioUrl,
       STT_USER_DATA_DIR: userData,
+      // Each test starts from an empty library; the guide has a test of its own.
+      NOTA_ONBOARDING: "off",
       ...env,
     },
   });
@@ -427,5 +429,33 @@ test("exports a note as Markdown", async () => {
   await expect(page.getByRole("status").filter({ hasText: "Exported." })).toBeVisible();
   expect(await readFile(path.join(exportDir, "የገበያ ዝርዝር.md"), "utf8")).toBe("# የገበያ ዝርዝር\n\nዳቦ #ቤት\n");
   await app.close();
+  await engine.close();
+});
+
+test("shows the setup guide on a fresh install, once", async () => {
+  const engine = await startFakeVoiceStudio(AMHARIC_TRANSCRIPT);
+  const { app, page } = await launch(engine.url, { env: { NOTA_ONBOARDING: "on" } });
+
+  const guide = page.getByRole("dialog", { name: /Setup guide/ });
+  await expect(guide.getByRole("heading", { name: "Welcome to Nota" })).toBeVisible();
+  await guide.getByRole("button", { name: "Next" }).click();
+  // This test runs on VoiceStudio, so there is nothing to download.
+  await expect(guide).toContainText("set to use VoiceStudio");
+  await guide.getByRole("button", { name: "4. Writing" }).click();
+  await expect(guide).toContainText("==text==");
+  await guide.getByRole("button", { name: "Start writing" }).click();
+  await expect(guide).toBeHidden();
+
+  // Settings can always open it again.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: /Setup guide/ }).click();
+  await expect(guide).toBeVisible();
+  await guide.getByRole("button", { name: "Skip guide" }).click();
+
+  await app.close();
+  const relaunched = await launch(engine.url, { env: { NOTA_ONBOARDING: "on" } });
+  await expect(relaunched.page.getByText("No notes yet.")).toBeVisible();
+  await expect(relaunched.page.getByRole("dialog", { name: /Setup guide/ })).toBeHidden();
+  await relaunched.app.close();
   await engine.close();
 });

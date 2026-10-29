@@ -1,4 +1,6 @@
 import { commandIdSchema } from "@shared/keymap";
+import { setupEventSchema } from "@shared/schemas/engine";
+import type { SetupEvent } from "@shared/types/engine";
 import type { CommandId } from "@shared/keymap";
 import type { DesktopApi } from "@shared/types/desktop-api";
 import type { Result } from "@shared/types/result";
@@ -32,6 +34,16 @@ export function subscribeToCommands(listener: (command: CommandId) => void): () 
   if (!events) return () => undefined;
   return events.onCommand((command) => {
     const parsed = commandIdSchema.safeParse(command);
+    if (parsed.success) listener(parsed.data);
+  });
+}
+
+/** Progress from a model setup; validated like any message from another process. */
+export function subscribeToSetup(listener: (event: SetupEvent) => void): () => void {
+  const events = typeof window === "undefined" ? undefined : window.desktopEvents;
+  if (!events) return () => undefined;
+  return events.onSetupEvent((event) => {
+    const parsed = setupEventSchema.safeParse(event);
     if (parsed.success) listener(parsed.data);
   });
 }

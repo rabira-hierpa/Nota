@@ -212,6 +212,11 @@ export class NotesRepo {
     });
   }
 
+  /** Resolves once every write queued so far has finished (before the vault forgets its key, say). */
+  flush(): Promise<void> {
+    return this.exclusive(async () => undefined);
+  }
+
   /** Adds a note made elsewhere (an older version's recording), unless it is already here. */
   importNote(note: Note, audioFile: string | null): Promise<boolean> {
     return this.exclusive(async () => {

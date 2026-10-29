@@ -18,8 +18,8 @@ const MODEL_NAMES: Record<LocalModelId, string> = { hohe: "Hohe", buzzasr: "Buzz
 export function amharicMessages(model: LocalModelId) {
   const name = MODEL_NAMES[model];
   return {
-    notSetUp: `${name} isn't set up yet. Run npm run setup:amharic-model, then try again.`,
-    failedToStart: `${name} couldn't start. Check that VoiceStudio is installed, then try again.`,
+    notSetUp: `${name} isn't set up yet. Open Settings, then the setup guide, to set it up.`,
+    failedToStart: `${name} couldn't start. Run its setup again from the setup guide in Settings.`,
     failed: `${name} couldn't transcribe this recording. Try again.`,
     stopped: `${name} stopped unexpectedly. Try again.`,
     timedOut: `${name} took too long. Try a shorter recording.`,

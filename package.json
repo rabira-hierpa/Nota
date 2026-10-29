@@ -3,7 +3,7 @@
   "productName": "Nota",
   "version": "0.1.0",
   "private": true,
-  "description": "Amharic notes you can write or speak, transcribed locally on your machine.",
+  "description": "Offline Amharic notes: write in Markdown, record or dictate, and Hohe transcribes on your own computer.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n next,main,app -c green,blue,magenta \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:app\"",
@@ -13,12 +13,16 @@
     "build": "next build && tsup",
     "start": "electron .",
     "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux",
+    "package:win": "npm run build && electron-builder --win --x64 && electron-builder --win --arm64",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
-    "setup:amharic-model": "bash scripts/setup-amharic-model.sh"
+    "setup:amharic-model": "node scripts/setup-speech.mjs",
+    "setup:hohe": "node scripts/setup-speech.mjs hohe"
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
@@ -60,17 +64,18 @@
   "build": {
     "appId": "com.rzcodes.nota",
     "productName": "Nota",
-    "files": [
-      "dist-electron/**",
-      "out/**",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "extendInfo": {
-        "NSMicrophoneUsageDescription": "Nota listens while you record or dictate, to turn your speech into Amharic text."
-      }
+    "copyright": "Copyright © 2026 Rabira Hierpa",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
     },
+    "files": [
+      "dist-electron/*.js",
+      "out/**",
+      "package.json",
+      "!node_modules/**/*"
+    ],
     "extraResources": [
       {
         "from": "electron/python",
@@ -78,7 +83,94 @@
         "filter": [
           "*.py"
         ]
+      },
+      {
+        "from": "scripts",
+        "to": "setup",
+        "filter": [
+          "setup-amharic-model.sh",
+          "setup-amharic-model.ps1",
+          "setup_models.py",
+          "speech-requirements.txt"
+        ]
       }
-    ]
-  }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon-mac.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Nota listens while you record or dictate, to turn your speech into Amharic text."
+      }
+    },
+    "dmg": {
+      "title": "Nota ${version}"
+    },
+    "linux": {
+      "icon": "build/icons",
+      "category": "Office",
+      "synopsis": "Offline Amharic notes with dictation and transcription",
+      "description": "Write notes in Markdown, record or dictate in Amharic, and transcribe offline with the Hohe speech model.",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Nota",
+      "artifactName": "${productName}-${version}-win-${arch}-setup.${ext}"
+    }
+  },
+  "homepage": "https://github.com/rabira-hierpa/nota"
 }

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { modelIdSchema } from "@shared/schemas/engine";
+import type { localModelIdSchema, modelIdSchema, setupEventSchema } from "@shared/schemas/engine";
 
 export type ModelId = z.infer<typeof modelIdSchema>;
 
@@ -8,3 +8,6 @@ export type EngineStatus = { kind: "online" } | { kind: "offline"; reason: strin
 
 /** A model the main process offers, and whether it can transcribe right now. */
 export type ModelStatus = EngineStatus & { model: ModelId };
+
+export type LocalModelId = z.infer<typeof localModelIdSchema>;
+export type SetupEvent = z.infer<typeof setupEventSchema>;

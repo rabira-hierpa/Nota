@@ -12,13 +12,15 @@ import { readAvailableModels, readLocalModelConfig, readVoiceStudioConfig } from
 import { resolveDataFolder } from "@main/lib/data-folder";
 import { safeFileName } from "@main/lib/file-name";
 import { importLegacyRecordings } from "@main/lib/legacy-recordings";
+import { ModelSetup } from "@main/lib/model-setup";
+import { Onboarding } from "@main/lib/onboarding";
 import { NoteVault } from "@main/lib/note-vault";
 import { NotesRepo } from "@main/lib/notes-repo";
 import { allowMicrophoneOnly } from "@main/lib/permissions";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
-import { COMMAND_CHANNEL } from "@shared/ipc-channels";
+import { COMMAND_CHANNEL, SETUP_CHANNEL } from "@shared/ipc-channels";
 import type { CommandId } from "@shared/keymap";
 import type { ModelId } from "@shared/types/engine";
 import type { ExportFormat } from "@shared/types/note";
@@ -50,6 +52,11 @@ if (!app.isPackaged) {
 }
 
 registerAppSchemePrivileges();
+
+/** Where the files that ship beside the app live: resources/ when packaged, the repo in development. */
+function bundled(packagedDir: string, repoDir: string): string {
+  return app.isPackaged ? path.join(process.resourcesPath, packagedDir) : path.join(app.getAppPath(), repoDir);
+}
 
 function createEngine(model: ModelId): TranscriptionEngine {
   if (model === "voicestudio") return new VoiceStudioClient(readVoiceStudioConfig());
@@ -141,7 +148,20 @@ app
     const repo = await openNotes(vault);
     const engines = new Map(readAvailableModels().map((model) => [model, createEngine(model)] as const));
     app.on("will-quit", () => engines.forEach((engine) => engine.dispose?.()));
-    registerIpc(createDesktopHandlers({ repo, engines, vault, saveExport }), trustedOrigin);
+    const userData = app.getPath("userData");
+    const setup = new ModelSetup(
+      bundled("setup", "scripts"),
+      userData,
+      (event) => mainWindow?.webContents.send(SETUP_CHANNEL, event),
+    );
+    app.on("will-quit", () => setup.cancel());
+    // e2e tests turn the guide off (NOTA_ONBOARDING=off) to start from an empty library.
+    const onboarding = new Onboarding(
+      path.join(userData, "onboarded"),
+      async () => (await repo.list()).length > 0,
+      process.env.NOTA_ONBOARDING === "off",
+    );
+    registerIpc(createDesktopHandlers({ repo, engines, vault, saveExport, setup, onboarding }), trustedOrigin);
 
     Menu.setApplicationMenu(buildAppMenu(sendCommand, { development: !app.isPackaged }));
     // Locked notes close when the Mac locks or sleeps, as in Bear.
