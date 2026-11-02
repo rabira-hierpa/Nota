@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, dialog, Menu, nativeTheme, powerMonitor, session } from "electron";
+import { app, BrowserWindow, dialog, Menu, nativeTheme, powerMonitor, session, utilityProcess } from "electron";
 import { createDesktopHandlers } from "@main/ipc/desktop-handlers";
 import type { PickAudioFile, SaveExport } from "@main/ipc/desktop-handlers";
 import { registerIpc } from "@main/ipc/register-ipc";
@@ -20,6 +21,9 @@ import { allowMicrophoneOnly } from "@main/lib/permissions";
 import type { TranscriptionEngine } from "@main/lib/transcription-engine";
 import { isTrustedUrl, originOf } from "@main/lib/trusted-origin";
 import { VoiceStudioClient } from "@main/lib/voice-studio";
+import { BuiltInHoheEngine, parseWorkerReply } from "@main/speech/built-in-hohe-engine";
+import type { SpeechWorker } from "@main/speech/built-in-hohe-engine";
+import { findBuiltInSpeech } from "@main/speech/built-in-speech";
 import { COMMAND_CHANNEL, SETUP_CHANNEL } from "@shared/ipc-channels";
 import type { CommandId } from "@shared/keymap";
 import { IMPORT_AUDIO_EXTENSIONS } from "@shared/schemas/note";
@@ -60,8 +64,35 @@ function bundled(packagedDir: string, repoDir: string): string {
   return app.isPackaged ? path.join(process.resourcesPath, packagedDir) : path.join(app.getAppPath(), repoDir);
 }
 
+/** The built-in models run in a utility process of their own (electron/speech/speech-worker.ts). */
+function startSpeechWorker(modelsDir: string): SpeechWorker {
+  const child = utilityProcess.fork(path.join(__dirname, "speech-worker.js"), [`--models=${modelsDir}`], {
+    serviceName: "Nota speech",
+  });
+  return {
+    postMessage: (message) => child.postMessage(message),
+    onMessage: (listener) => child.on("message", (data) => listener(parseWorkerReply(data))),
+    onExit: (listener) => child.on("exit", listener),
+    kill: () => {
+      child.kill();
+    },
+  };
+}
+
+/** Hohe built in, where this computer can run it; elsewhere only the Python setup can run Hohe. */
+const builtInSpeech = findBuiltInSpeech({
+  modelsDir: bundled("models", "models"),
+  nodeModulesDir: bundled("node_modules", "node_modules"),
+  platform: process.platform,
+  arch: process.arch,
+  osRelease: os.release(),
+  exists: existsSync,
+  env: process.env,
+});
+
 function createEngine(model: ModelId): TranscriptionEngine {
   if (model === "voicestudio") return new VoiceStudioClient(readVoiceStudioConfig());
+  if (model === "hohe" && builtInSpeech) return new BuiltInHoheEngine(() => startSpeechWorker(builtInSpeech));
   // The Python helper ships beside the app (extraResources) when packaged.
   const helperDir = app.isPackaged
     ? path.join(process.resourcesPath, "python")

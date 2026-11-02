@@ -10,15 +10,15 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/notes-light.png" alt="Nota: the sidebar with sections and tags, the note list, and a note with a heading, a checklist, a quote and a tag" width="860">
+  <img src=".github/screenshots/notes-light.png" alt="Nota: the sidebar with sections and tags, the note list, and a note with a heading, a checklist, a quote and a tag" width="860">
 </p>
 
 Nota is a desktop note-taking app for macOS, Windows and Linux, in the spirit of
 [Bear](https://bear.app). Write in Amharic or English with Markdown shortcuts,
 organise with `#tags` and `[[links]]`, and when typing is slow, speak: record
 a voice note, or dictate and watch the words appear after each pause. Speech
-is transcribed by **Hohe**, an Amharic speech model that runs locally. After a
-one-time setup, nothing needs the internet, and nothing leaves your computer.
+is transcribed by **Hohe**, an Amharic speech model built into Nota that runs
+on your computer. Nothing needs the internet, and nothing leaves your computer.
 
 ## Features
 
@@ -43,7 +43,7 @@ one-time setup, nothing needs the internet, and nothing leaves your computer.
 - **Summarize & organize** (✦ above a note): its key sentences, a long
   transcript cut into paragraphs where the topic changes, and tags that file
   it with notes like it. Worked out on your computer, with no model and no
-  download ([how, and what a model could add](docs/amharic-ai.md)).
+  download.
 - **In English or Amharic.** The whole interface, menu bar included, in
   either language (Settings → Language · ቋንቋ).
 - **Ethiopian calendar.** Dates in the Gregorian or the Ethiopian calendar,
@@ -62,7 +62,7 @@ one-time setup, nothing needs the internet, and nothing leaves your computer.
 
 | Zen mode | Dark | Shortcuts |
 |---|---|---|
-| ![Zen mode: only the note](docs/screenshots/zen-mode.png) | ![The dark theme](docs/screenshots/notes-dark.png) | ![The keyboard shortcuts panel](docs/screenshots/shortcuts.png) |
+| ![Zen mode: only the note](.github/screenshots/zen-mode.png) | ![The dark theme](.github/screenshots/notes-dark.png) | ![The keyboard shortcuts panel](.github/screenshots/shortcuts.png) |
 
 ## Download
 
@@ -71,7 +71,7 @@ Get the latest build from [Releases](https://github.com/rabira-hierpa/Nota/relea
 | System | File |
 |---|---|
 | macOS, Apple silicon (M1 and later) | `Nota-<version>-mac-arm64.dmg` |
-| macOS, Intel | `Nota-<version>-mac-x64.dmg` |
+| macOS, Intel | `Nota-<version>-mac-x64.dmg` (writing only: no speech model runs on Intel Macs) |
 | Windows, x64 | `Nota-<version>-win-x64-setup.exe` (or the portable `.zip`) |
 | Windows, ARM64 | `Nota-<version>-win-arm64-setup.exe` (or `.zip`) |
 | Linux, x86-64 | `Nota-<version>-linux-x86_64.AppImage` (or `.tar.gz`) |
@@ -86,7 +86,9 @@ xattr -dr com.apple.quarantine /Applications/Nota.app
 ```
 
 **Windows:** the installer is not signed yet, so SmartScreen warns on first
-run: choose **More info**, then **Run anyway**.
+run: choose **More info**, then **Run anyway**. Built-in Hohe needs the
+[Microsoft Visual C++ Redistributable](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist);
+if Hohe says it couldn't start, install that and restart Nota.
 
 **Linux:** make the AppImage executable and run it:
 
@@ -97,13 +99,30 @@ chmod +x Nota-*.AppImage && ./Nota-*.AppImage
 If it closes at once on Ubuntu 24.04 or later (a sandbox restriction on
 AppImages), start it with `--no-sandbox`.
 
-On first launch, Nota opens its **setup guide**, which sets up offline speech
-for you (next section). Writing works right away without it.
+On first launch, Nota opens its **setup guide**: the microphone, writing tips,
+and offline speech (next section).
 
-## Set up offline speech (Hohe)
+## Offline speech (Hohe)
 
 Nota transcribes with [Hohe](https://huggingface.co/snapwre/hohe-asr-amharic),
-an Amharic speech model. Setting it up downloads, once:
+an Amharic speech model. On Apple silicon Macs (macOS 14 or later), Windows and
+Linux it is **built in**: an 8-bit copy of Hohe ships inside the app and runs on
+the CPU, so there is nothing to download or install, and transcription and
+dictation work offline from the first launch. A whole recording also gets its
+sentence ends back (full stops and question marks) from a small punctuation
+model that ships with it; dictation types the words as Hohe hears them.
+
+Built in, Hohe needs about 3 GB of free memory while it transcribes a long
+recording, and gives the memory back five minutes after it was last used.
+
+**Intel Macs** have no offline speech: neither ONNX Runtime, which runs the
+built-in model, nor the PyTorch the Python setup uses ships for them any more.
+Writing works as everywhere else.
+
+### Setting up Hohe on macOS 13
+
+ONNX Runtime needs macOS 14, so on Apple silicon Macs still on macOS 13 Hohe
+runs through Python instead. Setting it up downloads, once:
 
 - the model: 2.4 GB, into the Hugging Face cache (`~/.cache/huggingface`);
 - a private Python runtime for it: about 0.6 GB, in Nota's data folder.
@@ -130,7 +149,7 @@ Open the setup guide (it opens on first launch, and any time from
 **Hohe ready** when it is done.
 
 <p align="center">
-  <img src="docs/screenshots/setup-guide.png" alt="The setup guide's Offline speech step, showing Hohe ready and the setup's progress" width="640">
+  <img src=".github/screenshots/setup-guide.png" alt="The setup guide's Offline speech step, showing Hohe ready and the setup's progress" width="640">
 </p>
 
 ### From a terminal
@@ -165,8 +184,9 @@ restart Nota: it notices the model within a few seconds.
 | Linux | `~/.config/Nota` |
 
 **Optional: BuzzASR.** A second model, a Whisper large-v3 fine-tune (3.1 GB),
-slower and less accurate in our tests. `npm run setup:amharic-model -- buzzasr`
-adds it; pick it in **Settings → Speech model**.
+slower and less accurate in our tests, where PyTorch runs (Apple silicon Macs,
+Windows x64, Linux). It runs through the same Python runtime: `npm run setup:amharic-model -- buzzasr` adds it; pick it in
+**Settings → Speech model**.
 
 **Using another Python.** If you already have a Python environment with the
 packages, point Nota at it instead of building one:
@@ -225,8 +245,8 @@ password, nobody can open a locked note, including you.
 
 Everything lives in Nota's data folder: one JSON file per note, plus a WAV for
 spoken notes. Nota makes no network requests while you use it: fonts ship with
-the app, and transcription runs on your machine with Hugging Face's offline
-mode switched on. The only downloads are the ones the speech setup makes, once.
+the app, and transcription runs on your machine. The only downloads are the
+ones the optional speech setup makes, once (BuzzASR, or Hohe on macOS 13).
 
 ## The models
 
@@ -241,11 +261,18 @@ mode switched on. The only downloads are the ones the speech setup makes, once.
 | Weak spots (per its card) | spontaneous conversation, spells numbers out, no punctuation | can invent text for silence, slower |
 
 Stock Whisper (including large-v3) learned almost no Amharic: about **193%
-character error** on FLEURS Amharic. Nota decodes both models itself
-([`electron/python/amharic_transcriber.py`](electron/python/amharic_transcriber.py)).
-On Apple silicon it uses the GPU; elsewhere the CPU. Long recordings are split
-at pauses into chunks under 30 s, and the model's helper process exits after
-five idle minutes to free memory.
+character error** on FLEURS Amharic. Long recordings are split at pauses into
+chunks under 30 s, and each model's process exits after five idle minutes to
+free memory.
+
+**Built-in Hohe** is an ONNX export of the same model with its weights stored
+in 8 bits (723 MB), run by [ONNX Runtime](https://onnxruntime.ai) in a
+background process ([`electron/speech/`](electron/speech)). On the first 150
+FLEURS clips it scores within 0.01 points of the full model. Its
+punctuation model is [1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase](https://huggingface.co/1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase),
+cut to the Amharic part of its vocabulary and stored in 8 bits (117 MB).
+Through Python ([`electron/python/amharic_transcriber.py`](electron/python/amharic_transcriber.py)),
+Hohe and BuzzASR use the GPU on Apple silicon and the CPU elsewhere.
 
 ## Configuration
 
@@ -260,6 +287,17 @@ Optional, for development (environment variables, or a `.env` file; see
 | `VOICESTUDIO_URL`, `OMNIVOICE_API_KEY` | Where VoiceStudio is, and its key if remote |
 
 ## Build a release
+
+A release carries the built-in models, which are not in git. Build them once
+(Python 3.10 or newer, or uv; it downloads both models from Hugging Face and
+needs about 6 GB of free disk while it works):
+
+```bash
+npm run build:speech    # models/: 8-bit Hohe, the punctuation model, NOTICE
+```
+
+Packaging checks `models/` against its manifest and stops if anything is
+missing. Then:
 
 ```bash
 npm run package:mac     # DMG and zip, Apple silicon and Intel, in release/
@@ -287,12 +325,16 @@ for the conventions.
 - **Hohe ASR** (`snapwre/hohe-asr-amharic`) by Chapi and the Dataset.ET
   contributors, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   fine-tuned from `badrex/Ethio-ASR-multilingual-600M` (CC BY 4.0).
-- **BuzzASR/amharic**, MIT licensed.
-- Neither model is bundled; the setup downloads them from Hugging Face.
+  Nota ships it with its weights quantized to 8 bits and exported to ONNX.
+- **Punctuation**: `1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase`,
+  Apache 2.0, built on XLM-RoBERTa (MIT); Nota ships it cut to Amharic and
+  quantized to 8 bits. The app carries both notices (`models/NOTICE`).
+- **BuzzASR/amharic**, MIT licensed; the setup downloads it from Hugging Face.
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime) by Microsoft, MIT licensed.
 - Fonts from Google Fonts under the SIL Open Font License; icons from
   [Untitled UI](https://www.untitledui.com/icons); editor by [Tiptap](https://tiptap.dev).
 
 ## License
 
-Nota is released under the [MIT License](LICENSE). The speech models it can
-download keep their own licences (above).
+Nota is released under the [MIT License](LICENSE). The speech models it ships
+or downloads keep their own licences (above).

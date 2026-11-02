@@ -17,7 +17,11 @@ function indicator(state: EngineState, model: ModelStatus | null, m: Messages): 
   const labels = m.models[model.model];
   return model.kind === "online"
     ? { label: labels.online, tone: "online", problem: null }
-    : { label: labels.offline, tone: "problem", problem: m.translate(model.reason) };
+    : {
+        label: model.builtIn ? m.models.builtInOffline : labels.offline,
+        tone: "problem",
+        problem: m.translate(model.reason),
+      };
 }
 
 const DOTS: Record<Indicator["tone"], string> = {

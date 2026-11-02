@@ -4,12 +4,20 @@ import { useId } from "react";
 import { MODEL_NAMES } from "@/features/notes/lib/model-labels";
 import { selectedModel, useEngineStore } from "@/features/notes/stores/engine-store";
 import { useMessages } from "@/hooks/use-messages";
+import type { Messages } from "@/lib/i18n";
 import { modelIdSchema } from "@shared/schemas/engine";
+import type { ModelStatus } from "@shared/types/engine";
 
 interface ModelSelectProps {
   disabled: boolean;
   /** Compact: no visible label, for the recording bar. */
   compact?: boolean;
+}
+
+/** Why a model can't be used now: not set up, or (built in) couldn't start. */
+function offlineNote(status: ModelStatus, m: Messages): string {
+  if (status.kind === "online") return "";
+  return status.builtIn ? m.models.cantStart : m.models.notSetUp;
 }
 
 /** Which speech model transcribes. Hidden when only one is on offer. */
@@ -47,7 +55,7 @@ export function ModelSelect({ disabled, compact = false }: ModelSelectProps) {
         {state.models.map((status) => (
           <option key={status.model} value={status.model}>
             {compact ? MODEL_NAMES[status.model] : m.models[status.model].option}
-            {status.kind === "offline" ? m.models.notSetUp : ""}
+            {offlineNote(status, m)}
           </option>
         ))}
       </select>

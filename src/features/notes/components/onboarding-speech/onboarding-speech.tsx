@@ -10,15 +10,19 @@ import type { SetupState } from "@/features/notes/stores/onboarding-store";
 import { useMessages } from "@/hooks/use-messages";
 import type { Messages } from "@/lib/i18n";
 import { cx } from "@/utils/cx";
+import type { ModelStatus } from "@shared/types/engine";
 
 const SETUP_COMMAND = "npm run setup:hohe";
 
-function statusLabel(ready: boolean, setup: SetupState, words: Messages["onboarding"]["speech"]): string {
-  if (ready) return words.ready;
+function statusLabel(hohe: ModelStatus | undefined, setup: SetupState, m: Messages): string {
+  const words = m.onboarding.speech;
+  if (hohe?.kind === "online") return words.ready;
+  // Built in, Hohe has nothing to set up: say why it can't run instead.
+  if (hohe?.builtIn) return m.translate(hohe.reason);
   return setup.kind === "running" ? words.running : words.notSetUp;
 }
 
-/** The one-time speech setup, run here with live progress, or from a terminal. */
+/** Hohe, built in (nothing to do) or set up once here with live progress, or from a terminal. */
 export function OnboardingSpeech() {
   const engine = useEngineStore((state) => state.state);
   const setup = useOnboardingStore((state) => state.setup);
@@ -30,6 +34,7 @@ export function OnboardingSpeech() {
   const words = m.onboarding.speech;
   const hohe = engine.kind === "ready" ? engine.models.find((status) => status.model === "hohe") : undefined;
   const ready = hohe?.kind === "online";
+  const builtIn = hohe?.builtIn ?? false;
   const running = setup.kind === "running";
 
   useEffect(() => {
@@ -45,7 +50,7 @@ export function OnboardingSpeech() {
       <p>
         {words.introBefore}
         <strong>Hohe</strong>
-        {words.introAfter}
+        {builtIn ? words.builtInAfter : words.introAfter}
       </p>
       <p
         role="status"
@@ -55,9 +60,9 @@ export function OnboardingSpeech() {
         )}
       >
         {ready ? <Check className="size-4" aria-hidden /> : null}
-        {statusLabel(ready, setup, words)}
+        {statusLabel(hohe, setup, m)}
       </p>
-      {ready ? null : (
+      {ready || builtIn ? null : (
         <div className="flex flex-wrap items-center gap-2">
           {running ? (
             <button type="button" onClick={() => void cancelSetup()} className={SECONDARY_BUTTON}>
@@ -86,7 +91,7 @@ export function OnboardingSpeech() {
           {lines.join("\n")}
         </pre>
       ) : null}
-      {ready ? null : (
+      {ready || builtIn ? null : (
         <p className="text-xs text-muted">
           {words.terminalBefore} <CopyCommand command={SETUP_COMMAND} />
           {words.terminalAfter}

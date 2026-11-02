@@ -6,8 +6,8 @@ export type ModelId = z.infer<typeof modelIdSchema>;
 /** Whether an engine can transcribe right now. */
 export type EngineStatus = { kind: "online" } | { kind: "offline"; reason: string };
 
-/** A model the main process offers, and whether it can transcribe right now. */
-export type ModelStatus = EngineStatus & { model: ModelId };
+/** A model the main process offers, whether it ships inside the app, and whether it can transcribe right now. */
+export type ModelStatus = EngineStatus & { model: ModelId; builtIn: boolean };
 
 export type LocalModelId = z.infer<typeof localModelIdSchema>;
 export type SetupEvent = z.infer<typeof setupEventSchema>;

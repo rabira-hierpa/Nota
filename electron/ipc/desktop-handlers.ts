@@ -88,7 +88,7 @@ export function createDesktopHandlers({
 
   async function transcribe(engine: TranscriptionEngine, { id, model }: TranscribeInput): Promise<Note> {
     const audio = await repo.readAudio(id);
-    const result = await engine.transcribe(audio, `${id}.wav`);
+    const result = await engine.transcribe(audio, `${id}.wav`, { punctuate: true });
     // An engine failure is part of the note's state, not an IPC failure: the
     // renderer shows the message on the note.
     return result.success
@@ -159,7 +159,13 @@ export function createDesktopHandlers({
     },
     listModels: () =>
       attempt(() =>
-        Promise.all([...engines].map(async ([model, engine]) => ({ model, ...(await engine.status()) }))),
+        Promise.all(
+          [...engines].map(async ([model, engine]) => ({
+            model,
+            builtIn: engine.builtIn ?? false,
+            ...(await engine.status()),
+          })),
+        ),
       ),
     prepareModel: (model) => {
       const parsed = modelIdSchema.safeParse(model);

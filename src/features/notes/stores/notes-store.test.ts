@@ -66,8 +66,8 @@ function fakeDesktop(overrides: Partial<DesktopApi> = {}): DesktopApi {
     transcribeClip: () => ok("ሰላም"),
     listModels: () =>
       ok([
-        { model: "hohe" as const, kind: "online" as const },
-        { model: "buzzasr" as const, kind: "online" as const },
+        { model: "hohe" as const, builtIn: true, kind: "online" as const },
+        { model: "buzzasr" as const, builtIn: false, kind: "online" as const },
       ]),
     prepareModel: () => ok(null),
     ...overrides,
@@ -77,7 +77,7 @@ function fakeDesktop(overrides: Partial<DesktopApi> = {}): DesktopApi {
 beforeEach(() => {
   useNotesStore.setState(useNotesStore.getInitialState());
   useEngineStore.setState({
-    state: { kind: "ready", models: [{ model: "hohe", kind: "online" }, { model: "buzzasr", kind: "online" }] },
+    state: { kind: "ready", models: [{ model: "hohe", builtIn: true, kind: "online" }, { model: "buzzasr", builtIn: false, kind: "online" }] },
     chosen: null,
   });
   vi.stubGlobal("URL", { createObjectURL: () => "blob:audio", revokeObjectURL: vi.fn() });

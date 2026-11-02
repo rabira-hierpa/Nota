@@ -106,7 +106,8 @@ describe("createDesktopHandlers", () => {
       success: true,
       data: { text: "ሰላም ዓለም", content: "<p>ሰላም ዓለም</p>", audio: { transcription: { status: "done", model: "buzzasr" } } },
     });
-    expect(buzzasr.transcribe).toHaveBeenCalledOnce();
+    // A whole recording gets its sentence ends back, where the engine can add them.
+    expect(buzzasr.transcribe).toHaveBeenCalledExactlyOnceWith(expect.any(Uint8Array), `${id}.wav`, { punctuate: true });
     expect(hohe.transcribe).not.toHaveBeenCalled();
   });
 
@@ -145,6 +146,7 @@ describe("createDesktopHandlers", () => {
       success: true,
       data: "ሰላም ዓለም",
     });
+    expect(hohe.transcribe.mock.calls[0]).toHaveLength(2);
     expect(await api.listNotes()).toEqual({ success: true, data: [] });
   });
 
@@ -158,14 +160,18 @@ describe("createDesktopHandlers", () => {
     expect(await api.transcribe({ id, model: "hohe" })).toEqual({ success: false, error: HANDLER_ERRORS.notFound });
   });
 
-  it("lists every model with its status, in order", async () => {
+  it("lists every model with its status, in order, and whether it is built in", async () => {
     buzzasr.status = () => Promise.resolve({ kind: "offline", reason: "BuzzASR isn't set up yet." });
+    engines = new Map<ModelId, TranscriptionEngine>([
+      ["hohe", { ...hohe, builtIn: true }],
+      ["buzzasr", buzzasr],
+    ]);
 
     expect(await handlers().listModels()).toEqual({
       success: true,
       data: [
-        { model: "hohe", kind: "online" },
-        { model: "buzzasr", kind: "offline", reason: "BuzzASR isn't set up yet." },
+        { model: "hohe", builtIn: true, kind: "online" },
+        { model: "buzzasr", builtIn: false, kind: "offline", reason: "BuzzASR isn't set up yet." },
       ],
     });
   });
