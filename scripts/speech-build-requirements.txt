@@ -1,0 +1,8 @@
+# What scripts/build_speech_models.py needs: the speech runtime, plus ONNX
+# export and quantization. Release builds only; the app itself needs none of it.
+-r speech-requirements.txt
+onnx==1.23.2
+onnxruntime==1.31.0
+sentencepiece==0.2.2
+protobuf==7.36.2
+pyyaml==6.0.3

@@ -13,17 +13,19 @@
     "dev:app": "wait-on tcp:3123 file:dist-electron/main.js file:dist-electron/preload.js && cross-env ELECTRON_RENDERER_URL=http://localhost:3123 electron .",
     "build": "next build && tsup",
     "start": "electron .",
-    "package": "npm run build && electron-builder",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:linux": "npm run build && electron-builder --linux",
-    "package:win": "npm run build && electron-builder --win --x64 && electron-builder --win --arm64",
+    "package": "npm run check:speech-models && npm run build && electron-builder",
+    "package:mac": "npm run check:speech-models && npm run build && electron-builder --mac",
+    "package:linux": "npm run check:speech-models && npm run build && electron-builder --linux",
+    "package:win": "npm run check:speech-models && npm run build && electron-builder --win --x64 && electron-builder --win --arm64",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
     "setup:amharic-model": "node scripts/setup-speech.mjs",
-    "setup:hohe": "node scripts/setup-speech.mjs hohe"
+    "setup:hohe": "node scripts/setup-speech.mjs hohe",
+    "build:speech": "bash scripts/build-speech-models.sh",
+    "check:speech-models": "node scripts/check-speech-models.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
@@ -37,6 +39,7 @@
     "@tiptap/starter-kit": "3.32.0",
     "@untitledui/icons": "^0.0.22",
     "next": "16.4.3",
+    "onnxruntime-node": "1.30.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-hook-form": "7.90.0",
@@ -94,8 +97,35 @@
           "setup_models.py",
           "speech-requirements.txt"
         ]
+      },
+      {
+        "from": "models",
+        "to": "models",
+        "filter": [
+          "*.onnx",
+          "*.json",
+          "NOTICE"
+        ]
+      },
+      {
+        "from": "node_modules/onnxruntime-node",
+        "to": "node_modules/onnxruntime-node",
+        "filter": [
+          "package.json",
+          "dist/*.js"
+        ]
+      },
+      {
+        "from": "node_modules/onnxruntime-common",
+        "to": "node_modules/onnxruntime-common",
+        "filter": [
+          "package.json",
+          "dist/cjs/*.js",
+          "dist/cjs/package.json"
+        ]
       }
     ],
+    "afterPack": "scripts/after-pack.mjs",
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build/icon-mac.png",
@@ -119,7 +149,18 @@
       "hardenedRuntime": false,
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Nota listens while you record or dictate, to turn your speech into Amharic text."
-      }
+      },
+      "extraResources": [
+        {
+          "from": "node_modules/onnxruntime-node/bin/napi-v6/darwin/${arch}",
+          "to": "node_modules/onnxruntime-node/bin/napi-v6/darwin/${arch}",
+          "filter": [
+            "*",
+            "!libonnxruntime.1.*.*.dylib",
+            "!libonnxruntime_providers_*"
+          ]
+        }
+      ]
     },
     "dmg": {
       "title": "Nota ${version}"
@@ -144,6 +185,17 @@
             "arm64"
           ]
         }
+      ],
+      "extraResources": [
+        {
+          "from": "node_modules/onnxruntime-node/bin/napi-v6/linux/${arch}",
+          "to": "node_modules/onnxruntime-node/bin/napi-v6/linux/${arch}",
+          "filter": [
+            "*",
+            "!libonnxruntime.1.*.*.dylib",
+            "!libonnxruntime_providers_*"
+          ]
+        }
       ]
     },
     "win": {
@@ -161,6 +213,17 @@
           "arch": [
             "x64",
             "arm64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "node_modules/onnxruntime-node/bin/napi-v6/win32/${arch}",
+          "to": "node_modules/onnxruntime-node/bin/napi-v6/win32/${arch}",
+          "filter": [
+            "*",
+            "!libonnxruntime.1.*.*.dylib",
+            "!libonnxruntime_providers_*"
           ]
         }
       ]

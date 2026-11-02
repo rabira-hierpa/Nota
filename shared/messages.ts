@@ -33,6 +33,11 @@ export const MODEL_NAMES: Record<LocalModelId, string> = { hohe: "Hohe", buzzasr
 export type LocalModelMessage = "notSetUp" | "failedToStart" | "failed" | "stopped" | "timedOut";
 
 /** A local model's messages, with its name in them. */
+/** Hohe built into the app has nothing to set up, so its failure to start says so. */
+export const BUILT_IN_MESSAGES = {
+  failedToStart: "Hohe couldn't start on this computer. Restart Nota, then try again.",
+} as const;
+
 export function amharicMessages(model: LocalModelId): Record<LocalModelMessage, string> {
   const name = MODEL_NAMES[model];
   return {

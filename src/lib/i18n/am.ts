@@ -1,6 +1,6 @@
 import type { Messages } from "@/lib/i18n/en";
 import { DESKTOP_ERRORS } from "@/lib/desktop";
-import { amharicMessages, ENGINE_MESSAGES, HANDLER_ERRORS, MODEL_NAMES } from "@shared/messages";
+import { amharicMessages, BUILT_IN_MESSAGES, ENGINE_MESSAGES, HANDLER_ERRORS, MODEL_NAMES } from "@shared/messages";
 import type { LocalModelMessage } from "@shared/messages";
 import type { LocalModelId } from "@shared/types/engine";
 
@@ -42,6 +42,10 @@ function modelAm(name: string): Record<LocalModelMessage, string> {
   };
 }
 
+const BUILT_IN_AM: Record<keyof typeof BUILT_IN_MESSAGES, string> = {
+  failedToStart: "Hohe በዚህ ኮምፒውተር ላይ መጀመር አልቻለም። Notaን እንደገና ያስጀምሩ፣ ከዚያ እንደገና ይሞክሩ።",
+};
+
 const DESKTOP_AM: Record<keyof typeof DESKTOP_ERRORS, string> = {
   missing: "ይህ ገጽ የሚሰራው በዴስክቶፕ መተግበሪያው ውስጥ ብቻ ነው። በ`npm run dev` ያስጀምሩት።",
   unresponsive: "የዴስክቶፕ መተግበሪያው ምላሽ አልሰጠም። እንደገና ይሞክሩ።",
@@ -58,6 +62,7 @@ const ARRIVING: ReadonlyMap<string, string> = new Map([
   ...pairs(HANDLER_ERRORS, HANDLER_AM),
   ...pairs(ENGINE_MESSAGES, ENGINE_AM),
   ...pairs(DESKTOP_ERRORS, DESKTOP_AM),
+  ...pairs(BUILT_IN_MESSAGES, BUILT_IN_AM),
   ...LOCAL_MODELS.flatMap((model) => pairs(amharicMessages(model), modelAm(MODEL_NAMES[model]))),
 ]);
 
@@ -361,6 +366,8 @@ export const am: Messages = {
   models: {
     label: "የንግግር ሞዴል",
     notSetUp: " (አልተዘጋጀም)",
+    cantStart: " (መጀመር አልቻለም)",
+    builtInOffline: "Hohe መጀመር አልቻለም",
     hohe: { option: "Hohe · ፈጣን (wav2vec2-BERT)", online: "Hohe ዝግጁ ነው", offline: "Hohe አልተዘጋጀም" },
     buzzasr: { option: "BuzzASR · Whisper large-v3", online: "BuzzASR ዝግጁ ነው", offline: "BuzzASR አልተዘጋጀም" },
     voicestudio: { option: "VoiceStudio", online: "VoiceStudio ተገናኝቷል", offline: "VoiceStudio አልተገናኘም" },
@@ -382,7 +389,7 @@ export const am: Messages = {
       points: [
         "በአማርኛ ወይም በእንግሊዝኛ ማስታወሻ ይጻፉ፤ በMarkdown ቅርጸት፣ በመለያዎች እና በአገናኞች።",
         "ከመተየብ ይልቅ ይናገሩ፦ የድምፅ ማስታወሻ ይቅረጹ፣ ወይም በድምፅ ይጻፉና ቃላቱ ሲታዩ ይመልከቱ።",
-        "ሁሉም ነገር በዚህ ኮምፒውተር ላይ ይቀራል። ከአንድ ጊዜ ማዋቀር በኋላ ንግግርም ያለ ኢንተርኔት ይሰራል።",
+        "ሁሉም ነገር በዚህ ኮምፒውተር ላይ ይቀራል፤ ንግግርም ያለ ኢንተርኔት ይሰራል።",
       ],
     },
     speech: {
@@ -390,6 +397,8 @@ export const am: Messages = {
       introBefore: "Nota ንግግርን ወደ ጽሑፍ የሚቀይረው በ",
       introAfter:
         " ነው፤ ይህ በዚህ ኮምፒውተር ላይ የሚሰራ የአማርኛ የንግግር ሞዴል ነው። አንድ ጊዜ ማውረድ ያስፈልገዋል (ሞዴሉ 2.4 GB፣ የPython ማስኬጃው 0.6 GB ገደማ)። ከዚያ በኋላ ኢንተርኔት አያስፈልግም።",
+      builtInAfter:
+        " ነው፤ ይህ ከNota ጋር አብሮ የሚመጣ፣ በዚህ ኮምፒውተር ላይ የሚሰራ የአማርኛ የንግግር ሞዴል ነው። የሚወርድ ነገር የለም፤ ኢንተርኔትም አያስፈልግም።",
       ready: "Hohe ዝግጁ ነው። ንግግር ያለ ኢንተርኔት ይሰራል።",
       running: "Hohe በመዘጋጀት ላይ…",
       notSetUp: "Hohe ገና አልተዘጋጀም።",

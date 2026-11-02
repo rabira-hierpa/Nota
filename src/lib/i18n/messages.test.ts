@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { am } from "@/lib/i18n/am";
 import { en } from "@/lib/i18n/en";
 import { DESKTOP_ERRORS } from "@/lib/desktop";
-import { amharicMessages, ENGINE_MESSAGES, HANDLER_ERRORS } from "@shared/messages";
+import { amharicMessages, BUILT_IN_MESSAGES, ENGINE_MESSAGES, HANDLER_ERRORS } from "@shared/messages";
 
 const ETHIOPIC = /\p{Script=Ethiopic}/u;
 
@@ -42,6 +42,7 @@ describe("the Amharic messages", () => {
       ...Object.values(HANDLER_ERRORS),
       ...Object.values(ENGINE_MESSAGES),
       ...Object.values(DESKTOP_ERRORS),
+      ...Object.values(BUILT_IN_MESSAGES),
       ...Object.values(amharicMessages("hohe")),
       ...Object.values(amharicMessages("buzzasr")),
     ];

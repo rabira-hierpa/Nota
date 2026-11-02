@@ -28,3 +28,8 @@ dist/
 # python
 __pycache__/
 marketing
+
+# speech models (npm run build:speech)
+/models/
+/models.partial/
+/.cache/

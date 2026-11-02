@@ -22,7 +22,7 @@ vi.mock("@/features/notes/lib/pcm-capture", () => ({
 }));
 
 const RATE = 16_000;
-const hohe: ModelStatus = { model: "hohe", kind: "online" };
+const hohe: ModelStatus = { model: "hohe", builtIn: true, kind: "online" };
 const note: Note = {
   id: "4f0e3b4a-5f53-4a8e-9f51-0d7a1b8f6c2e",
   createdAt: "2026-10-28T09:00:00.000Z",
@@ -143,7 +143,7 @@ describe("dictation", () => {
   });
 
   it("says why it can't start with a model that isn't set up", async () => {
-    const offline: ModelStatus = { model: "hohe", kind: "offline", reason: "Hohe isn't set up yet." };
+    const offline: ModelStatus = { model: "hohe", builtIn: false, kind: "offline", reason: "Hohe isn't set up yet." };
     await useDictationStore.getState().start(null, offline, target());
 
     expect(useDictationStore.getState().state).toEqual({ kind: "error", message: "Hohe isn't set up yet." });

@@ -302,6 +302,9 @@ export const en = {
   models: {
     label: "Speech model",
     notSetUp: " (not set up)",
+    /** Built-in Hohe has nothing to set up; it can only fail to start. */
+    cantStart: " (couldn't start)",
+    builtInOffline: "Hohe couldn't start",
     hohe: { option: "Hohe · fast (wav2vec2-BERT)", online: "Hohe ready", offline: "Hohe not set up" },
     buzzasr: { option: "BuzzASR · Whisper large-v3", online: "BuzzASR ready", offline: "BuzzASR not set up" },
     voicestudio: { option: "VoiceStudio", online: "VoiceStudio connected", offline: "VoiceStudio offline" },
@@ -323,7 +326,7 @@ export const en = {
       points: [
         "Write notes in Amharic or English, with Markdown formatting, tags and links.",
         "Speak instead of typing: record a voice note, or dictate and watch the words appear.",
-        "Everything stays on this computer. After a one-time setup, speech works offline too.",
+        "Everything stays on this computer, and speech works offline too.",
       ],
     },
     speech: {
@@ -331,6 +334,8 @@ export const en = {
       introBefore: "Nota transcribes with ",
       introAfter:
         ", an Amharic speech model that runs on this computer. It needs a one-time download (the model is 2.4 GB, its Python runtime about 0.6 GB). After that, no internet is needed.",
+      builtInAfter:
+        ", an Amharic speech model built into Nota. It runs on this computer, with nothing to download and no internet needed.",
       ready: "Hohe is ready. Speech works offline.",
       running: "Setting up Hohe…",
       notSetUp: "Hohe isn't set up yet.",
