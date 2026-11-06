@@ -1,0 +1,15 @@
+Speech models built into Nota
+
+hohe-w8.onnx, hohe.json
+  Hohe ASR Amharic by snapwre, https://huggingface.co/snapwre/hohe-asr-amharic
+  (revision 217712df448adc0956b2d1b3f13bc30466c8733b), licensed CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/). Changed: exported to ONNX,
+  weights stored in 8 bits, computed with 8-bit inputs.
+
+punct-w8.onnx, punct.json
+  xlm-roberta_punctuation_fullstop_truecase by 1-800-BAD-CODE,
+  https://huggingface.co/1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase
+  (revision d1769a597ce8dfaa070d436bc67d4ee761f58884), licensed Apache-2.0
+  (https://www.apache.org/licenses/LICENSE-2.0), built on XLM-RoBERTa
+  (MIT). Changed: word table cut to the pieces Amharic text uses, weights
+  stored in 8 bits.

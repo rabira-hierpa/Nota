@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and later. Notes never go to a cloud backup. Moving to a new
+     phone (device to device) takes them along, but not the speech models,
+     which are 841 MB and can be copied again. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="external" path="models" />
+    </device-transfer>
+</data-extraction-rules>
