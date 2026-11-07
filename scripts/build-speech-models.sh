@@ -7,6 +7,8 @@
 #
 #   --fixtures        also rewrite electron/speech/fixtures from scripts/speech-samples.txt
 #   --fixtures-only   only that, from the models already in models/
+#   --notices-only    only rewrite models/NOTICE and the licence texts (from
+#                     licenses/models/) and the manifest; any Python 3 will do
 #
 # Downloads about 3.5 GB once (the Hugging Face cache) and needs about 10 GB of
 # memory for a few minutes. The build runtime is a Python virtual environment
@@ -21,6 +23,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 VENV="$ROOT/.cache/speech-build"
 REQUIREMENTS="$HERE/speech-build-requirements.txt"
+
+if [[ "${1:-}" == "--notices-only" ]]; then
+  exec "${NOTA_BUILD_PYTHON:-python3}" -I "$HERE/build_speech_models.py" "$ROOT/models" --notices-only
+fi
 
 if [[ -n "${NOTA_BUILD_PYTHON:-}" ]]; then
   PYTHON="$NOTA_BUILD_PYTHON"

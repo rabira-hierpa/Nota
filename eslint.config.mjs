@@ -72,6 +72,7 @@ const eslintConfig = defineConfig([
     "release/**",
     "models/**",
     ".cache/**",
+    "mobile/build/**",
     "next-env.d.ts",
   ]),
 ]);

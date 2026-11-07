@@ -131,7 +131,9 @@ class SpeechMessages {
     confirmAppend:
         'Transcribe the recording again? The new text is added after what the note already says; '
         'nothing is replaced.',
-    credit: 'Hohe by snapwre (CC BY 4.0); punctuation by 1-800-BAD-CODE (Apache-2.0).',
+    credit:
+        'Hohe by Chapi and the Dataset.ET contributors, Snapwre (CC BY 4.0); '
+        'punctuation by 1-800-BAD-CODE (Apache-2.0).',
     noModel: 'No speech model is available yet. Add it in Speech models.',
     queued: 'Waiting to be transcribed…',
     failed: "Hohe couldn't transcribe this recording. Try again.",
@@ -199,7 +201,7 @@ class SpeechMessages {
     copyCommand: 'ትዕዛዙን ቅዳ',
     transcribingPercent: (percent) => 'በመቀየር ላይ… $percent%',
     confirmAppend: 'ቅጂው እንደገና ወደ ጽሑፍ ይቀየር? አዲሱ ጽሑፍ ማስታወሻው አሁን ካለው ጽሑፍ በኋላ ይታከላል፤ ምንም አይተካም።',
-    credit: 'Hohe በsnapwre (CC BY 4.0)፤ የሥርዓተ ነጥብ ሞዴሉ በ1-800-BAD-CODE (Apache-2.0)።',
+    credit: 'Hohe በChapi እና በDataset.ET አበርካቾች፣ Snapwre (CC BY 4.0)፤ የሥርዓተ ነጥብ ሞዴሉ በ1-800-BAD-CODE (Apache-2.0)።',
     noModel: 'እስካሁን የንግግር ሞዴል የለም። በ«የንግግር ሞዴሎች» ውስጥ ያክሉት።',
     queued: 'ወደ ጽሑፍ ለመቀየር በመጠበቅ ላይ…',
     failed: 'Hohe ይህን ቅጂ ወደ ጽሑፍ መቀየር አልቻለም። እንደገና ይሞክሩ።',

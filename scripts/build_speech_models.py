@@ -3,6 +3,7 @@ Python and no download (electron/speech/). Run by build-speech-models.sh.
 
   python -I build_speech_models.py <out dir>                  # the models
   python -I build_speech_models.py <out dir> --fixtures <dir>  # and the test fixtures
+  python -I build_speech_models.py <out dir> --notices-only    # only NOTICE and the licences
 
 Both models are exported to ONNX with 8-bit weights (MatMulNBits, blocks of
 32, symmetric): on FLEURS this changes nothing measurable. Hohe's layers also
@@ -15,13 +16,17 @@ run at accuracy level 4 (see HOHE_ACCURACY_LEVEL).
                   pieces Amharic text uses, about 117 MB
   punct.json      that tokenizer's kept pieces, renumbered, and the labels
   NOTICE          where the models come from and their licences
+  LICENSE-*.txt   the licence texts NOTICE points to, from licenses/models/
   manifest.json   every file's size and SHA-256, checked before packaging
 
-Prints numbers only.
+--notices-only rewrites NOTICE and the licence texts of models already built
+(checking the weights against the manifest first) and needs only the standard
+library. Prints numbers only.
 """
 
 import argparse
 import base64
+import fnmatch
 import hashlib
 import json
 import os
@@ -30,8 +35,7 @@ import shutil
 import tempfile
 import warnings
 
-import numpy as np
-
+LICENSES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "licenses", "models")
 HOHE = {"repo": "snapwre/hohe-asr-amharic", "revision": "217712df448adc0956b2d1b3f13bc30466c8733b"}
 HOHE_FILES = ["config.json", "model.safetensors", "preprocessor_config.json", "vocab.json", "added_tokens.json",
               "special_tokens_map.json", "tokenizer_config.json"]
@@ -55,21 +59,39 @@ DIGITS_AND_MARKS = re.compile(r"^[0-9\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E▁]+$"
 LATIN_LETTER = re.compile(r"^▁?[A-Za-z]$")
 SPECIALS = 4  # <s> <pad> </s> <unk>
 
-NOTICE = """Speech models built into Nota
+# The credits CC BY 4.0 §3(a) asks for, and Apache-2.0 §4's changed-files
+# notice. The licence texts it names are copied from licenses/models/.
+NOTICE = """Speech models used by Nota
+
+These files are not covered by Nota's own MIT licence: each keeps the
+licence named below. They are provided as is, without warranties of any
+kind.
 
 hohe-w8.onnx, hohe.json
-  Hohe ASR Amharic by snapwre, https://huggingface.co/snapwre/hohe-asr-amharic
+  Hohe ASR Amharic by Chapi and the Dataset.ET contributors (Snapwre),
+  https://huggingface.co/snapwre/hohe-asr-amharic
   (revision {hohe}), licensed CC BY 4.0
-  (https://creativecommons.org/licenses/by/4.0/). Changed: exported to ONNX,
-  weights stored in 8 bits, computed with 8-bit inputs.
+  (https://creativecommons.org/licenses/by/4.0/).
+  Fine-tuned from Ethio-ASR multilingual 600M by the Ethio-ASR Team
+  (Abdullah, Azime, Tonja et al., 2026, arXiv:2603.23654),
+  https://huggingface.co/badrex/Ethio-ASR-multilingual-600M, licensed
+  CC BY 4.0, itself built on w2v-BERT 2.0 by Meta,
+  https://huggingface.co/facebook/w2v-bert-2.0, licensed MIT (notice in
+  LICENSE-MIT-w2v-bert-2.0.txt).
+  Changed by Nota: exported to ONNX, weights stored in 8 bits and computed
+  with 8-bit inputs; its CTC tokens written out as hohe.json.
 
 punct-w8.onnx, punct.json
   xlm-roberta_punctuation_fullstop_truecase by 1-800-BAD-CODE,
   https://huggingface.co/1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase
   (revision {punct}), licensed Apache-2.0
-  (https://www.apache.org/licenses/LICENSE-2.0), built on XLM-RoBERTa
-  (MIT). Changed: word table cut to the pieces Amharic text uses, weights
-  stored in 8 bits.
+  (text in LICENSE-Apache-2.0.txt).
+  Built on XLM-RoBERTa by Facebook AI,
+  https://github.com/facebookresearch/fairseq/tree/main/examples/xlmr,
+  licensed MIT (notice in LICENSE-MIT-xlm-roberta.txt).
+  Changed by Nota: word table cut to the pieces Amharic text uses, weights
+  stored in 8 bits; its tokenizer's kept pieces and labels written out as
+  punct.json.
 """
 
 
@@ -102,6 +124,8 @@ def quantize(source, target, accuracy_level=0):
 
 def probe_audio(seconds):
     """A fixed test sound (two tones and noise): exporting needs one input, and nothing private."""
+    import numpy as np
+
     rng = np.random.default_rng(0)
     t = np.arange(int(seconds * SAMPLE_RATE)) / SAMPLE_RATE
     wave = 0.2 * np.sin(2 * np.pi * 220 * t) + 0.1 * np.sin(2 * np.pi * 1330 * t) + 0.05 * rng.standard_normal(t.size)
@@ -109,6 +133,7 @@ def probe_audio(seconds):
 
 
 def build_hohe(out, work):
+    import numpy as np
     import onnxruntime as ort
     import torch
     from transformers import AutoModelForCTC, AutoProcessor
@@ -203,6 +228,7 @@ def kept_pieces(proto):
 
 def restricted_tokenizer(sp_model, keep):
     """The tokenizer as the cut model needs it: unkept pieces are never used, kept ones renumbered."""
+    import numpy as np
     from sentencepiece import SentencePieceProcessor, sentencepiece_model_pb2
 
     proto = sentencepiece_model_pb2.ModelProto()
@@ -218,6 +244,7 @@ def restricted_tokenizer(sp_model, keep):
 
 
 def build_punct(out, work):
+    import numpy as np
     import onnx
     import yaml
     from onnx import numpy_helper
@@ -278,32 +305,80 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def write_manifest(out):
-    import onnxruntime
-    import torch
-    import transformers
+def write_manifest(out, built_with=None, files=None):
+    """Lists files (by default everything in out, a fresh build) with their sizes and SHA-256s."""
+    if built_with is None:
+        import onnxruntime
+        import torch
+        import transformers
 
-    files = sorted(name for name in os.listdir(out) if name != "manifest.json")
+        built_with = {"torch": torch.__version__, "transformers": transformers.__version__,
+                      "onnxruntime": onnxruntime.__version__}
+    if files is None:
+        files = [name for name in os.listdir(out) if name != "manifest.json"]
     manifest = {
         "hohe": HOHE, "punct": PUNCT,
-        "built_with": {"torch": torch.__version__, "transformers": transformers.__version__,
-                       "onnxruntime": onnxruntime.__version__},
+        "built_with": built_with,
         "files": {name: {"bytes": os.path.getsize(os.path.join(out, name)), "sha256": sha256(os.path.join(out, name))}
-                  for name in files},
+                  for name in sorted(files)},
     }
     with open(os.path.join(out, "manifest.json"), "w", encoding="utf-8") as file:
         json.dump(manifest, file, indent=2)
         file.write("\n")
     for name, entry in manifest["files"].items():
-        say(f"  {name:<16} {entry['bytes'] / 1e6:8.1f} MB")
+        say(f"  {name:<28} {entry['bytes'] / 1e6:8.1f} MB")
+
+
+def is_notice(name):
+    """NOTICE or a licence text: the names packaging ships as notices (package.json's models filter)."""
+    return name == "NOTICE" or fnmatch.fnmatchcase(name, "LICENSE-*.txt")
+
+
+def licence_files():
+    """The licence texts in licenses/models/, checked before anything is built or removed."""
+    names = sorted(name for name in os.listdir(LICENSES) if not name.startswith("."))
+    stray = [name for name in names if name == "NOTICE" or not is_notice(name)]
+    if stray:
+        raise SystemExit(f"licenses/models/ should hold only LICENSE-*.txt files, not {', '.join(stray)}.")
+    return names
+
+
+def write_notices(out, licences):
+    """NOTICE and the licence texts it names; returns their names."""
+    with open(os.path.join(out, "NOTICE"), "w", encoding="utf-8") as file:
+        file.write(NOTICE.format(hohe=HOHE["revision"], punct=PUNCT["revision"]))
+    for name in licences:
+        shutil.copyfile(os.path.join(LICENSES, name), os.path.join(out, name))
+    return ["NOTICE", *licences]
+
+
+def rewrite_notices(out):
+    """New notices beside models already built, which must still match their manifest and pinned revisions."""
+    licences = licence_files()
+    with open(os.path.join(out, "manifest.json"), encoding="utf-8") as file:
+        manifest = json.load(file)
+    if manifest["hohe"] != HOHE or manifest["punct"] != PUNCT:
+        raise SystemExit("The pinned revisions changed since these models were built: build the models again.")
+    models = [name for name in manifest["files"] if not is_notice(name)]
+    for name in models:
+        path, entry = os.path.join(out, name), manifest["files"][name]
+        if not os.path.exists(path) or os.path.getsize(path) != entry["bytes"] or sha256(path) != entry["sha256"]:
+            raise SystemExit(f"{name} doesn't match the manifest: build the models again.")
+    for name in os.listdir(out):
+        if is_notice(name):
+            os.remove(os.path.join(out, name))
+    write_manifest(out, manifest["built_with"], models + write_notices(out, licences))
 
 
 def b64(array):
+    import numpy as np
+
     return base64.b64encode(np.ascontiguousarray(array).tobytes()).decode("ascii")
 
 
 def fixtures(target, hohe_source, punct_source, keep, out, samples):
     """Python's answers for the TypeScript ports to match (electron/speech/*.test.ts)."""
+    import numpy as np
     import onnxruntime as ort
     from transformers import AutoProcessor
 
@@ -357,6 +432,8 @@ def fixtures(target, hohe_source, punct_source, keep, out, samples):
 
 def window_labels(session, ids, room, punct):
     """Overlapping windows; each subtoken takes the window where it sits furthest from a cut."""
+    import numpy as np
+
     best = [(-1, 0, 0)] * len(ids)
     step, start = room // 2, 0
     while True:
@@ -379,9 +456,13 @@ def main():
     parser.add_argument("--fixtures", help="also write the test fixtures here")
     parser.add_argument("--samples", help="sample sentences for the fixtures, one per line")
     parser.add_argument("--fixtures-only", action="store_true", help="from models already built in <out dir>")
+    parser.add_argument("--notices-only", action="store_true", help="rewrite NOTICE and the licence texts in <out dir>")
     args = parser.parse_args()
 
     out = os.path.abspath(args.out)
+    if args.notices_only:
+        rewrite_notices(out)
+        return
     if args.fixtures_only:
         from sentencepiece import sentencepiece_model_pb2
 
@@ -391,14 +472,14 @@ def main():
         fixtures(os.path.abspath(args.fixtures), download(HOHE, HOHE_FILES), punct_source, kept_pieces(proto), out,
                  args.samples)
         return
+    licences = licence_files()
     staging = out + ".partial"
     shutil.rmtree(staging, ignore_errors=True)
     os.makedirs(staging)
     with tempfile.TemporaryDirectory(prefix="nota-speech-") as work:
         hohe_source = build_hohe(staging, work)
         punct_source, keep = build_punct(staging, work)
-    with open(os.path.join(staging, "NOTICE"), "w", encoding="utf-8") as file:
-        file.write(NOTICE.format(hohe=HOHE["revision"], punct=PUNCT["revision"]))
+    write_notices(staging, licences)
     if args.fixtures:
         fixtures(os.path.abspath(args.fixtures), hohe_source, punct_source, keep, staging, args.samples)
     write_manifest(staging)

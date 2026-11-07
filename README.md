@@ -293,11 +293,14 @@ A release carries the built-in models, which are not in git. Build them once
 needs about 6 GB of free disk while it works):
 
 ```bash
-npm run build:speech    # models/: 8-bit Hohe, the punctuation model, NOTICE
+npm run build:speech    # models/: 8-bit Hohe, the punctuation model, NOTICE, licences
 ```
 
 Packaging checks `models/` against its manifest and stops if anything is
-missing. Then:
+missing, the notices and licence texts included, or if `licenses/onnxruntime/`
+doesn't hold the notices of the ONNX Runtime version installed. After changing
+the notice or `licenses/models/`, `npm run build:speech -- --notices-only`
+rewrites just those. Then:
 
 ```bash
 npm run package:mac     # DMG and zip, Apple silicon and Intel, in release/
@@ -324,13 +327,18 @@ for the conventions.
 
 - **Hohe ASR** (`snapwre/hohe-asr-amharic`) by Chapi and the Dataset.ET
   contributors, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
-  fine-tuned from `badrex/Ethio-ASR-multilingual-600M` (CC BY 4.0).
+  fine-tuned from `badrex/Ethio-ASR-multilingual-600M` by the Ethio-ASR Team
+  (CC BY 4.0), itself built on Meta's w2v-BERT 2.0 (MIT).
   Nota ships it with its weights quantized to 8 bits and exported to ONNX.
 - **Punctuation**: `1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase`,
   Apache 2.0, built on XLM-RoBERTa (MIT); Nota ships it cut to Amharic and
-  quantized to 8 bits. The app carries both notices (`models/NOTICE`).
+  quantized to 8 bits. The models' notice (`models/NOTICE`) and the licence
+  texts it names ship beside them, in both apps.
 - **BuzzASR/amharic**, MIT licensed; the setup downloads it from Hugging Face.
-- [ONNX Runtime](https://github.com/microsoft/onnxruntime) by Microsoft, MIT licensed.
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime) by Microsoft, MIT
+  licensed; its licence and third-party notices ship with it (`licenses/onnxruntime/`).
+  Windows builds leave out its DirectML and DirectX shader compiler DLLs, which
+  Nota doesn't use.
 - Fonts from Google Fonts under the SIL Open Font License; icons from
   [Untitled UI](https://www.untitledui.com/icons); editor by [Tiptap](https://tiptap.dev).
 

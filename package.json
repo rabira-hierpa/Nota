@@ -104,7 +104,8 @@
         "filter": [
           "*.onnx",
           "*.json",
-          "NOTICE"
+          "NOTICE",
+          "LICENSE-*.txt"
         ]
       },
       {
@@ -113,6 +114,14 @@
         "filter": [
           "package.json",
           "dist/*.js"
+        ]
+      },
+      {
+        "from": "licenses/onnxruntime",
+        "to": "node_modules/onnxruntime-node",
+        "filter": [
+          "LICENSE",
+          "ThirdPartyNotices.txt"
         ]
       },
       {
@@ -223,7 +232,10 @@
           "filter": [
             "*",
             "!libonnxruntime.1.*.*.dylib",
-            "!libonnxruntime_providers_*"
+            "!libonnxruntime_providers_*",
+            "!DirectML.dll",
+            "!dxcompiler.dll",
+            "!dxil.dll"
           ]
         }
       ]
