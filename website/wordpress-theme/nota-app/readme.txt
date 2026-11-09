@@ -1,0 +1,40 @@
+=== Nota ===
+Contributors: rzcodes
+Requires at least: 6.2
+Tested up to: 7.1
+Requires PHP: 7.4
+License: MIT
+License URI: https://opensource.org/license/mit
+
+The marketing site for Nota, offline Amharic notes you can write or speak.
+
+== Description ==
+
+A bilingual landing page (English and Amharic) for the Nota app, in its green and
+gold, in light and dark. Upload it, activate it, and the home page is done. There
+are no required plugins.
+
+Change the words, links and pictures under Appearance, Customize, Nota landing
+page. Each piece of text has an English and an Amharic field, and the download
+links follow one version field.
+
+The Amharic page lives at /?lang=am. The theme writes the title, description,
+canonical link, language links, Open Graph tags and JSON-LD itself. If Yoast, Rank
+Math, All in One SEO, SEOPress or The SEO Framework is active, the plugin keeps the
+title and meta tags, and the theme adds the language links and the description of
+the app.
+
+Elementor keeps working: pages built with it show at full width on this theme, and
+none of its files load on the landing page. To go back to a page built earlier, set
+Appearance, Customize, Nota landing page, Home page to the page from Settings,
+Reading.
+
+== Credits ==
+
+* Plus Jakarta Sans, Copyright 2020 The Plus Jakarta Sans Project Authors. SIL Open
+  Font License 1.1 (assets/fonts/OFL-PlusJakartaSans.txt).
+* Noto Sans Ethiopic, Copyright 2022 The Noto Project Authors. SIL Open Font License
+  1.1 (assets/fonts/OFL-NotoSansEthiopic.txt).
+* Phosphor Icons, Copyright 2023 Phosphor Icons. MIT License
+  (assets/icons/LICENSE-phosphor.txt).
+* The screenshots and clips show the Nota app itself, with sample notes.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nota-site-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["website/scripts/preview-theme.mjs"],
+      "port": 9411
+    }
+  ]
+}
