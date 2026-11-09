@@ -16,10 +16,11 @@ import '../hohe/model_files.dart';
 /// A model file's expected size and SHA-256, as in [ModelFiles.expected].
 typedef ExpectedFile = ({int bytes, String sha256});
 
-/// Where the model files can be downloaded from, set at build time with
-/// `--dart-define=NOTA_MODELS_URL=…`. Nothing is hosted yet, so it is empty
-/// and no download is offered.
-const _modelsUrl = String.fromEnvironment('NOTA_MODELS_URL');
+/// Where the model files can be downloaded from: Nota's Cloudflare R2 bucket
+/// (`nota-models`), one folder per set of files, since [ModelFiles.expected]
+/// pins each file's hash. A build can point elsewhere with
+/// `--dart-define=NOTA_MODELS_URL=…`, or offer no download with an empty one.
+const _modelsUrl = String.fromEnvironment('NOTA_MODELS_URL', defaultValue: 'https://models.nota.et/v1/');
 
 /// A download or copy is written here first and renamed once checked, so a
 /// half-written file never passes for a model.

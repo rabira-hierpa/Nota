@@ -34,10 +34,13 @@ Run `flutter build ios --config-only` first, or build again.
 
 ## The speech models
 
-The models (841 MB) don't ship in the app. Build them on a computer with
-`npm run build:speech` in the repository root, then copy the four files from
-`models/` (`hohe-w8.onnx`, `hohe.json`, `punct-w8.onnx`, `punct.json`) to the
-phone. The app's Speech models screen shows these steps too.
+The models (841 MB) don't ship in the app. The Speech models screen downloads
+them from `https://models.nota.et/v1/`, and checks each file's SHA-256 before
+using it; a stopped download picks up where it left off. They can also be
+copied in: build them on a computer with `npm run build:speech` in the
+repository root, then copy the four files from `models/` (`hohe-w8.onnx`,
+`hohe.json`, `punct-w8.onnx`, `punct.json`) to the phone. The app's Speech
+models screen shows these steps too.
 
 - **Android:** open Nota once, then copy the files into
   `Android/data/com.rzcodes.nota/files/models` over USB, or with adb:
@@ -47,8 +50,26 @@ phone. The app's Speech models screen shows these steps too.
 - **Either:** Import files on the Speech models screen picks them from the
   phone, a memory card or a USB drive, and checks each one.
 
-A build made with `--dart-define=NOTA_MODELS_URL=<base URL>` can also download
-them. Nothing is hosted yet.
+### Where the download comes from
+
+`models.nota.et` is the Cloudflare R2 bucket `nota-models`, connected as a
+custom domain. Each set of files has its own folder (`v1/`), because the app
+pins every file's size and hash in `lib/features/speech/hohe/model_files.dart`:
+new models go in a new folder with the new hashes, and the default in
+`model_store.dart` moves with them, so older builds keep downloading the files
+they expect. Upload with rclone (a remote named `r2`; the dashboard and
+Wrangler can't take the 723 MB file in one piece):
+
+```bash
+cd models
+rclone copy . r2:nota-models/v1 --include "*.onnx" --include "*.json" --include "LICENSE-*.txt" --include NOTICE \
+  --header-upload "Cache-Control: public, max-age=31536000, immutable" --s3-chunk-size 64M
+```
+
+Keep `NOTICE` and the licence texts beside the models: Hohe's CC BY licence
+asks for the credits wherever the files are shared. A build can download from
+somewhere else with `--dart-define=NOTA_MODELS_URL=<base URL>`, or offer no
+download with an empty one.
 
 Transcribing needs about 2 GB of free memory.
 

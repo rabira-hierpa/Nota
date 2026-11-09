@@ -149,7 +149,9 @@ note), ports the notes logic to `mobile/lib/features/notes/logic/` and the
 speech pipeline to `mobile/lib/features/speech/hohe/` (checked against the
 same `electron/speech/fixtures/`, copied to `mobile/test/fixtures/`), and runs
 Hohe through flutter_onnxruntime in 20 s pieces. The models aren't bundled:
-the user copies them in (adb, Finder or the file picker). On iOS the plugin
+the app downloads them from `https://models.nota.et/v1/` (Cloudflare R2
+bucket `nota-models`, uploaded with rclone; a new set of models goes in a new
+folder), or the user copies them in (adb, Finder or the file picker). On iOS the plugin
 can't turn ONNX Runtime's arena off, so the weights stay out of it through a
 session config. Change a desktop module and its Dart port together. Toolchain:
 `~/flutter/bin`, Java 21 from Homebrew, SDK in `~/Library/Android/sdk`; the
