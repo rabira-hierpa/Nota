@@ -24,6 +24,18 @@ Math, All in One SEO, SEOPress or The SEO Framework is active, the plugin keeps 
 title and meta tags, and the theme adds the language links and the description of
 the app.
 
+Visits and clicks on each download button can be counted with Umami, which sets
+no cookies: paste its website ID under Appearance, Customize, Nota landing page,
+Visits and downloads. Nothing is counted for people logged in to the site.
+
+The Dashboard's Nota downloads box shows how often each release and build was
+downloaded from GitHub. The theme asks GitHub every six hours, in the background, and
+never during a visitor's page view. The download total can also show on the page.
+
+A page at /releases/ (or any page with the template Nota release notes) shows the
+release notes from GitHub, cleaned of anything but text, links and tables, in English
+and at ?lang=am in Amharic.
+
 Elementor keeps working: pages built with it show at full width on this theme, and
 none of its files load on the landing page. To go back to a page built earlier, set
 Appearance, Customize, Nota landing page, Home page to the page from Settings,

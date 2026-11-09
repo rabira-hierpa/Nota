@@ -7,13 +7,19 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'NOTA_THEME_VERSION', '1.0.0' );
+define( 'NOTA_THEME_VERSION', '1.2.0' );
 
 require_once get_theme_file_path( 'inc/content.php' );
 require_once get_theme_file_path( 'inc/helpers.php' );
 require_once get_theme_file_path( 'inc/customizer.php' );
 require_once get_theme_file_path( 'inc/seo.php' );
 require_once get_theme_file_path( 'inc/elementor.php' );
+require_once get_theme_file_path( 'inc/github.php' );
+require_once get_theme_file_path( 'inc/releases.php' );
+require_once get_theme_file_path( 'inc/analytics.php' );
+if ( is_admin() ) {
+	require_once get_theme_file_path( 'inc/dashboard.php' );
+}
 
 /**
  * What the theme supports.
@@ -120,7 +126,7 @@ add_action( 'wp_head', 'nota_head_boot', 0 );
  * @return string
  */
 function nota_language_attributes( $output ) {
-	if ( nota_is_landing() ) {
+	if ( nota_is_bilingual() ) {
 		return 'lang="' . esc_attr( nota_lang() ) . '" dir="ltr"';
 	}
 	return $output;

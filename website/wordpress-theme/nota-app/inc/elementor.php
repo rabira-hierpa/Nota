@@ -89,14 +89,15 @@ function nota_is_stripped_asset( $assets, $handle, $depth = 0 ) {
 }
 
 /**
- * Removes other people's page-builder and block styles from the landing page. A
- * kit that styles every h1 would otherwise restyle it, and a visitor would pay for
- * Elementor's files on a page that uses none of them.
+ * Removes other people's page-builder and block styles from the landing page and
+ * the release notes page, which the theme builds itself. A kit that styles every h1
+ * would otherwise restyle them, and a visitor would pay for Elementor's files on a
+ * page that uses none of them.
  *
  * @return void
  */
 function nota_strip_landing_assets() {
-	if ( ! nota_is_landing() ) {
+	if ( ! nota_is_bilingual() ) {
 		return;
 	}
 
@@ -122,7 +123,7 @@ add_action( 'wp_print_footer_scripts', 'nota_strip_landing_assets', 1 );
  * @return bool
  */
 function nota_elementor_google_fonts( $print ) {
-	return nota_is_landing() ? false : $print;
+	return nota_is_bilingual() ? false : $print;
 }
 add_filter( 'elementor/frontend/print_google_fonts', 'nota_elementor_google_fonts' );
 
@@ -134,7 +135,7 @@ add_filter( 'elementor/frontend/print_google_fonts', 'nota_elementor_google_font
  * @return string[]
  */
 function nota_landing_body_classes( $classes ) {
-	if ( ! nota_is_landing() ) {
+	if ( ! nota_is_bilingual() ) {
 		return $classes;
 	}
 	$kept = array();
@@ -143,7 +144,7 @@ function nota_landing_body_classes( $classes ) {
 			$kept[] = $class;
 		}
 	}
-	$kept[] = 'nota-landing';
+	$kept[] = nota_is_landing() ? 'nota-landing' : 'nota-releases';
 	return $kept;
 }
 add_filter( 'body_class', 'nota_landing_body_classes', 9999 );

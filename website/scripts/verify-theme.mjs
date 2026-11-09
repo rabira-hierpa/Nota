@@ -13,6 +13,10 @@
  * The site is set up to be hard on the theme: Elementor and LiteSpeed Cache active,
  * and a home page built with Elementor on its Canvas template, with a kit that
  * paints every h1 magenta. The theme goes in through the real Upload Theme form.
+ *
+ * The release notes and download counts are checked against GitHub's own API, read
+ * at the same time. Umami's real script runs on the page, and what it would send is
+ * caught here, so nothing reaches Umami.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -114,6 +118,16 @@ nota_step('finished');
 echo 'ok';
 `;
 
+/* Counts the server's requests to GitHub, to show that pages are served from the cache. */
+const GITHUB_CALLS_PHP = `<?php
+add_action('http_api_debug', function ($response, $context, $class, $args, $url) {
+	if (false !== strpos($url, 'api.github.com/')) {
+		update_option('verify_github_calls', (int) get_option('verify_github_calls', 0) + 1, false);
+		update_option('verify_github_last', (is_wp_error($response) ? $response->get_error_message() : wp_remote_retrieve_response_code($response)) . ' ' . $url, false);
+	}
+}, 10, 5);
+`;
+
 /* Plugins and setup run after boot, not as blueprint steps: a failed step would stop
    the whole site, with no message saying why. */
 const blueprint = {
@@ -190,6 +204,22 @@ async function shoot(name, width, full = true) {
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(out, `${name}.png`) });
+  await page.setViewportSize({ width, height: 900 });
+}
+
+/* One part of a page, cut from a full-page shot (element shots come out blank through
+   Playground's nested frames). */
+async function shootPart(name, selector, width) {
+  await shoot(name, width);
+  const frame = await waitForWp();
+  const height = await frame.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width, height: Math.min(height, 14000) });
+  const box = await frame.evaluate((sel) => {
+    const rect = document.querySelector(sel).getBoundingClientRect();
+    return { y: rect.top + window.scrollY, height: rect.height };
+  }, selector);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(out, `${name}.png`), clip: { x: 0, y: Math.max(0, box.y - 24), width, height: box.height + 48 } });
   await page.setViewportSize({ width, height: 900 });
 }
 
@@ -293,6 +323,9 @@ await page.evaluate(async (source) => {
   await window.notaClient.mkdir("/wordpress/wp-content/mu-plugins");
   await window.notaClient.writeFile("/wordpress/wp-content/mu-plugins/verify-as-visitor.php", source);
 }, AS_VISITOR_PHP);
+await page.evaluate(async (source) => {
+  await window.notaClient.writeFile("/wordpress/wp-content/mu-plugins/verify-github-calls.php", source);
+}, GITHUB_CALLS_PHP);
 await runPhp("make the test content", SETUP_PHP);
 
 let frame = await waitForWp();
@@ -546,6 +579,247 @@ if (withPlugins) {
 }
 
 await customize({ nota_hero_title_en: "Amharic notes you can write or speak.", nota_hero_title_am: "የአማርኛ ማስታወሻ፣ በመጻፍም በመናገርም።", nota_version: "0.3.0", nota_hero_secondary_en: "See how it works", nota_android_url: "" });
+
+/* --- Release notes, download counts and visits ------------------------------------------- */
+
+/* What GitHub itself says, to hold the page to. Read just before, so the counts match. */
+const isMeta = (name) => /\.(blockmap|ya?ml|sha256|sha512|sig|asc|txt)$/i.test(name);
+const ghList = await (await fetch("https://api.github.com/repos/rabira-hierpa/Nota/releases?per_page=100", { headers: { "User-Agent": "nota-verify", Accept: "application/vnd.github+json" } })).json();
+const ghReleases = ghList.filter((release) => !release.draft).sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+const ghCount = (release) => release.assets.filter((asset) => !isMeta(asset.name)).reduce((sum, asset) => sum + asset.download_count, 0);
+const ghTotal = ghReleases.reduce((sum, release) => sum + ghCount(release), 0);
+const fmt = (n) => n.toLocaleString("en-US");
+note(`GitHub says: ${ghReleases.map((release) => `${release.tag_name} (${ghCount(release)})`).join(", ")}; ${ghTotal} downloads in all`);
+
+const cleaned = await runPhp("release notes go through the cleaner", `<?php require_once '/wordpress/wp-load.php';
+$html = '<h2>Hi <a href="#hi" class="anchor">#</a></h2><p onclick="steal()">A <a href="javascript:alert(1)">bad</a> and <a href="https://example.com/x" target="_blank" onmouseover="steal()">fine</a> link.</p><script>alert("s")</script><img src="https://example.com/t.png" onerror="steal()"><iframe src="https://example.com"></iframe><style>body{display:none}</style><table><tr><th align="left">c</th></tr></table><h2>አማርኛ</h2><p>ሰላም</p><h3>ዝርዝር</h3><p>ተጨማሪ</p><h2>After</h2><p>tail</p>';
+echo wp_json_encode( nota_release_notes_split( $html ) );`);
+let split = { en: "", am: "" };
+try {
+  split = JSON.parse(cleaned.text);
+} catch {
+  note(`cleaner said: ${cleaned.text.slice(0, 300)}`);
+}
+const both = split.en + split.am;
+check("notes: no scripts, handlers, frames, styles, pictures or javascript: links", !/<script|<iframe|<style|<img|on(click|error|mouseover)=|javascript:|steal|alert|target=/i.test(both) && /A bad and/.test(split.en), both.slice(0, 300));
+check("notes: headings start at h3, permalink anchors go, tables get their box", /<h3>Hi\s*<\/h3>/.test(split.en) && !/class="anchor"/.test(split.en) && /<div class="release-table"><table>/.test(split.en), split.en.slice(0, 200));
+check("notes: links to other sites stay", /<a href="https:\/\/example\.com\/x">fine<\/a>/.test(split.en), split.en.match(/<a [^>]*>fine/)?.[0] ?? "");
+check("notes: the section headed አማርኛ goes to the Amharic page only", /ሰላም/.test(split.am) && /<h3>ዝርዝር<\/h3>/.test(split.am) && /ተጨማሪ/.test(split.am) && !/After/.test(split.am) && !/ሰላም/.test(split.en) && /After/.test(split.en) && /tail/.test(split.en), JSON.stringify(split).slice(0, 300));
+
+await runPhp("make the release notes page", `<?php require_once '/wordpress/wp-load.php';
+wp_insert_post(array('post_type'=>'page','post_status'=>'publish','post_title'=>'Release notes','post_name'=>'releases','post_content'=>''));
+delete_option('nota_github_releases'); delete_transient('nota_github_fresh'); update_option('verify_github_calls', 0);
+echo 'ok';`);
+
+const githubCalls = async () => {
+  const result = await runPhp("read the GitHub request count", `<?php require_once '/wordpress/wp-load.php'; $d = get_option('nota_github_releases'); echo wp_json_encode(array('calls' => (int) get_option('verify_github_calls'), 'last' => get_option('verify_github_last'), 'error' => is_array($d) ? $d['error'] : null, 'etag' => is_array($d) ? $d['etag'] : null, 'releases' => is_array($d) ? count($d['releases']) : null, 'fresh' => (bool) get_transient('nota_github_fresh')));`);
+  try {
+    return JSON.parse(result.text);
+  } catch {
+    return { calls: -1, raw: result.text.slice(0, 200) };
+  }
+};
+
+const releaseFacts = (frame) => frame.evaluate(() => ({
+  lang: document.documentElement.lang,
+  title: document.title,
+  h1: document.querySelector("h1")?.textContent.trim(),
+  colors: [document.querySelector("h1"), document.body, document.querySelector(".release__notes")].filter(Boolean).map((el) => getComputedStyle(el).color),
+  assets: [...document.querySelectorAll('link[rel="stylesheet"]'), ...document.querySelectorAll("script[src]")].map((el) => el.href || el.src),
+  intro: document.querySelector(".page-intro")?.textContent.trim(),
+  titles: [...document.querySelectorAll(".release__title")].map((el) => el.textContent.trim()),
+  ids: [...document.querySelectorAll(".release")].map((el) => el.id),
+  badge: document.querySelector(".release .release__badge")?.textContent.trim(),
+  dates: [...document.querySelectorAll(".release time")].map((el) => `${el.getAttribute("datetime")}|${el.textContent.trim()}`),
+  github: [...document.querySelectorAll(".release__links a.text-link")].map((a) => a.href),
+  cta: document.querySelector(".release__links .button")?.getAttribute("href"),
+  firstNotes: document.querySelector(".release__notes")?.innerHTML ?? "",
+  notesLang: document.querySelector(".release__notes")?.getAttribute("lang"),
+  langNote: document.querySelector(".release__lang-note")?.textContent.trim(),
+  counts: [...document.querySelectorAll(".release__count")].map((el) => el.textContent.trim()),
+  scriptsInNotes: document.querySelectorAll(".release__notes script, .release__notes img, .release__notes iframe").length,
+  canonical: [...document.querySelectorAll('link[rel="canonical"]')].map((link) => link.href),
+  alternates: [...document.querySelectorAll('link[rel="alternate"][hreflang]')].map((link) => `${link.hreflang}=${link.href}`),
+  descriptions: [...document.querySelectorAll('meta[name="description"]')].map((meta) => meta.content),
+  switchEn: document.querySelector('.lang-switch a[hreflang="en"]')?.href,
+  switchAm: document.querySelector('.lang-switch a[hreflang="am"]')?.href,
+  empty: document.querySelector(".releases__empty")?.textContent.trim(),
+  html: document.documentElement.outerHTML,
+}));
+const notices = (html) => (html.match(/<b>(Warning|Notice|Deprecated|Fatal error)<\/b>.{0,200}/) || [""])[0];
+
+for (const [lang, query] of [["en", "/releases/?as_visitor=1"], ["am", "/releases/?lang=am&as_visitor=1"]]) {
+  consoleErrors = [];
+  frame = await goto(query);
+  const facts = await releaseFacts(frame);
+  const v030 = facts.dates[facts.ids.indexOf("release-v0-3-0")] ?? "";
+  check(`releases ${lang}: no PHP notices`, !notices(facts.html), notices(facts.html));
+  check(`releases ${lang}: html lang`, facts.lang === lang, facts.lang);
+  check(`releases ${lang}: every GitHub release, newest first, by name`, JSON.stringify(facts.titles) === JSON.stringify(ghReleases.slice(0, 10).map((release) => release.name || release.tag_name)), facts.titles.join(", "));
+  check(`releases ${lang}: each links to its GitHub release`, JSON.stringify(facts.github) === JSON.stringify(ghReleases.slice(0, 10).map((release) => release.html_url)), facts.github[0]);
+  check(`releases ${lang}: the newest says it is the latest, with a download button`, facts.badge === (lang === "am" ? "የቅርብ ጊዜው" : "Latest") && /#download$/.test(facts.cta ?? ""), `${facts.badge} ${facts.cta}`);
+  check(`releases ${lang}: notes rendered from GitHub's Markdown`, /<h3>What's new<\/h3>|<h3>What’s new<\/h3>/.test(facts.firstNotes) || /<h3>/.test(facts.firstNotes), facts.firstNotes.slice(0, 120));
+  check(`releases ${lang}: no scripts or pictures in the notes`, facts.scriptsInNotes === 0);
+  check(`releases ${lang}: the 0.3.0 date`, v030 === (lang === "am" ? "2026-11-02|ጥቅምት 23፣ 2019" : "2026-11-02|2 November 2026"), v030);
+  check(`releases ${lang}: one canonical, for this language`, facts.canonical.length === 1 && /\/releases\//.test(facts.canonical[0]) && (lang === "am") === /lang=am/.test(facts.canonical[0]), facts.canonical.join(" "));
+  check(`releases ${lang}: hreflang en, am and x-default on this page`, facts.alternates.length === 3 && facts.alternates.every((alt) => /\/releases\//.test(alt)), facts.alternates.join(" "));
+  check(`releases ${lang}: one description, from the intro`, facts.descriptions.length === 1 && facts.descriptions[0] === facts.intro, facts.descriptions.join(" | "));
+  check(`releases ${lang}: the language switch stays on this page`, /\/releases\/$/.test(facts.switchEn ?? "") && /\/releases\/\?lang=am$/.test(facts.switchAm ?? ""), `${facts.switchEn} ${facts.switchAm}`);
+  check(`releases ${lang}: no download numbers until they are switched on`, facts.counts.length === 0);
+  if (withPlugins) {
+    check(`releases ${lang}: the kit's magenta and Elementor's files stay off`, !facts.colors.includes("rgb(255, 0, 255)") && !facts.assets.some((url) => /elementor|swiper|font-awesome|eicons|fonts\.googleapis/.test(url)), `${facts.colors.join(", ")} ${facts.assets.filter((url) => /elementor/.test(url)).join(" ")}`);
+  }
+  if (lang === "en") {
+    check("releases en: heading and title", facts.h1 === "Release notes" && /^Release notes/.test(facts.title), `${facts.h1} / ${facts.title}`);
+  } else {
+    check("releases am: Amharic heading and title, notes marked as English", facts.h1 === "የስሪት ማስታወሻዎች" && /^የስሪት ማስታወሻዎች/.test(facts.title) && facts.notesLang === "en" && facts.langNote === "የዚህ ስሪት ማስታወሻ በእንግሊዝኛ ብቻ ነው።", `${facts.h1} / ${facts.title} / ${facts.notesLang} / ${facts.langNote}`);
+  }
+
+  for (const [width, label] of [[1440, "desktop"], [820, "tablet"], [390, "phone"], [360, "small"]]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.waitForTimeout(250);
+    const overflow = await noOverflow(frame);
+    check(`releases ${lang}: no sideways scroll at ${width}`, overflow.scroll <= overflow.limit && overflow.wide.length === 0, `${overflow.scroll}/${overflow.limit} ${overflow.wide.join(", ")}`);
+    if (label === "desktop" || label === "phone") {
+      for (const scheme of ["light", "dark"]) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.waitForTimeout(200);
+        await shoot(`releases-${lang}-${label}-${scheme}`, width);
+        await page.setViewportSize({ width, height: 844 });
+        await axe(frame, `releases ${lang} ${label} ${scheme}`);
+      }
+      await page.emulateMedia({ colorScheme: "light" });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const realErrors = consoleErrors.filter((text) => !/favicon|service worker|Failed to load resource.*(cors-proxy)/i.test(text));
+  check(`releases ${lang}: no console errors`, realErrors.length === 0, realErrors.slice(0, 3).join(" | "));
+}
+
+frame = await goto("/releases/?as_visitor=1");
+let calls = await githubCalls();
+note(`GitHub: ${JSON.stringify(calls)}`);
+check("cache: three page views asked GitHub once", calls.calls === 1 && calls.fresh && calls.releases === ghReleases.length && calls.error === "", JSON.stringify(calls));
+
+frame = await goto("/?as_visitor=1");
+const whatsNew = await frame.evaluate(() => [...document.querySelectorAll(".download__head a.text-link")].map((a) => `${a.textContent.trim()}|${a.getAttribute("href")}`));
+check("landing: What's new links to the version on the release notes page", whatsNew.some((link) => /^What's new in 0\.3\.0\|.*\/releases\/#release-v0-3-0$/.test(link)), whatsNew.join(" "));
+frame = await goto("/?lang=am&as_visitor=1");
+const whatsNewAm = await frame.evaluate(() => document.querySelector(".download__head a.text-link")?.getAttribute("href"));
+check("landing am: and to the Amharic release notes", /\/releases\/\?lang=am#release-v0-3-0$/.test(whatsNewAm ?? ""), whatsNewAm);
+
+/* The Dashboard box, against GitHub's own numbers. */
+frame = await goto("/wp-admin/index.php");
+const widget = await frame.evaluate(() => document.querySelector("#nota_downloads")?.innerText ?? "");
+check("dashboard: the downloads box shows GitHub's total", widget.includes(fmt(ghTotal)) && widget.includes(ghReleases[0].tag_name), widget.slice(0, 200).replace(/\s+/g, " "));
+await frame.locator("#nota_downloads").scrollIntoViewIfNeeded();
+await frame.locator("#nota_downloads").screenshot({ path: join(out, "dashboard-downloads.png") });
+await frame.locator("#nota_downloads a.button").click();
+/* The button goes through admin-post.php and back: wait for the Dashboard it returns to. */
+for (let i = 0; i < 60 && !/nota_github=/.test(wpFrame()?.url() ?? ""); i += 1) await page.waitForTimeout(1000);
+frame = await waitForWp();
+await frame.locator("#nota_downloads").waitFor();
+const refreshed = await frame.evaluate(() => document.querySelector("#nota_downloads")?.innerText ?? "");
+calls = await githubCalls();
+check("dashboard: Ask GitHub now asks again", /Asked GitHub again/.test(refreshed) && calls.calls === 2, `${calls.calls} calls; last ${calls.last}; ${refreshed.slice(0, 80).replace(/\s+/g, " ")}`);
+
+/* Download numbers on the page, once switched on. */
+await customize({ nota_show_downloads: true });
+frame = await goto("/?as_visitor=1");
+const shown = await frame.evaluate(() => document.querySelector(".download__count")?.textContent.trim());
+check("landing: with numbers on, the total shows under the version", shown === `${fmt(ghTotal)} downloads so far`, String(shown));
+await shootPart("landing-download-with-count-desktop", "#download", 1440);
+await shootPart("landing-download-with-count-phone", "#download", 390);
+await page.setViewportSize({ width: 1440, height: 900 });
+frame = await goto("/?lang=am&as_visitor=1");
+const shownAm = await frame.evaluate(() => document.querySelector(".download__count")?.textContent.trim());
+check("landing am: and in Amharic", shownAm === `እስካሁን ${fmt(ghTotal)} ጊዜ ወርዷል`, String(shownAm));
+frame = await goto("/releases/?as_visitor=1");
+const perRelease = (await releaseFacts(frame)).counts;
+check("releases: with numbers on, each version's count", JSON.stringify(perRelease) === JSON.stringify(ghReleases.slice(0, 10).map((release) => `${fmt(ghCount(release))} download${ghCount(release) === 1 ? "" : "s"}`)), perRelease.join(", "));
+await shoot("releases-en-desktop-light-with-counts", 1440, false);
+await page.setViewportSize({ width: 1440, height: 900 });
+calls = await githubCalls();
+check("cache: none of those pages asked GitHub", calls.calls === 2, JSON.stringify(calls));
+await customize({ nota_show_downloads: false });
+
+/* GitHub out of reach, or a wrong link: a message, no notices. */
+await customize({ nota_github_url: "https://github.com/rabira-hierpa/nota-verify-no-such-repository" });
+frame = await goto("/releases/?as_visitor=1");
+const broken = await releaseFacts(frame);
+check("releases: a repository that isn't there gives a message", !!broken.empty && broken.titles.length === 0 && !notices(broken.html), `${broken.empty} ${notices(broken.html)}`);
+frame = await goto("/wp-admin/index.php");
+const brokenWidget = await frame.evaluate(() => document.querySelector("#nota_downloads")?.innerText ?? "");
+check("dashboard: and says why", /no public repository/.test(brokenWidget), brokenWidget.slice(0, 160).replace(/\s+/g, " "));
+await customize({ nota_github_url: "https://github.com/rabira-hierpa/Nota" });
+frame = await goto("/releases/?as_visitor=1");
+check("releases: back on the right repository, the notes come back", (await releaseFacts(frame)).titles.length === Math.min(10, ghReleases.length));
+
+/* Counting visits and clicks. Umami's real script runs; what it sends is caught here. */
+frame = await goto("/wp-admin/customize.php?autofocus[section]=nota_stats");
+await frame.waitForFunction(() => window.wp?.customize?.section && window.wp.customize.section("nota_stats"));
+await page.waitForTimeout(3000);
+const statsControls = await frame.evaluate(() => window.wp.customize.section("nota_stats").controls().map((control) => control.id));
+check("customizer: Visits and downloads has its four fields", ["nota_umami_id", "nota_umami_src", "nota_cf_token", "nota_show_downloads"].every((id) => statsControls.includes(id)), statsControls.join(", "));
+await page.screenshot({ path: join(out, "customizer-visits.png") });
+
+const FAKE_UMAMI = "00000000-0000-4000-8000-000000000000";
+const umamiSent = [];
+/* The script posts to gateway.umami.is today; any Umami host is caught. */
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+await context.route(/^https:\/\/[a-z-]+\.umami\.is\/api\/send/, async (route) => {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({ status: 204, headers: CORS });
+    return;
+  }
+  try {
+    umamiSent.push(route.request().postDataJSON());
+  } catch {
+    umamiSent.push({ raw: route.request().postData() });
+  }
+  await route.fulfill({ status: 200, contentType: "application/json", body: "{}", headers: CORS });
+});
+await context.route("https://static.cloudflareinsights.com/**", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: "/* stand-in */" }));
+
+await customize({ nota_umami_id: `  ${FAKE_UMAMI.toUpperCase()} `, nota_cf_token: "<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{\"token\": \"0123456789abcdef0123456789abcdef\"}'></script>" });
+frame = await goto("/");
+const asEditor = await frame.evaluate(() => ({ scripts: document.querySelectorAll("script[data-website-id], script[data-cf-beacon]").length, tracked: document.querySelectorAll(".dl-file[data-umami-event]").length }));
+check("analytics: nothing counts the site's own editors", asEditor.scripts === 0 && asEditor.tracked === 6, JSON.stringify(asEditor));
+
+frame = await goto("/?as_visitor=1");
+const tracking = await frame.evaluate(() => {
+  const umami = document.querySelector("script[data-website-id]");
+  const cf = document.querySelector("script[data-cf-beacon]");
+  return {
+    umami: umami && { src: umami.src, id: umami.dataset.websiteId, domains: umami.dataset.domains, dnt: umami.dataset.doNotTrack, defer: umami.defer },
+    host: location.hostname,
+    cf: cf && cf.getAttribute("data-cf-beacon"),
+    platforms: [...document.querySelectorAll(".dl-file")].map((a) => `${a.dataset.umamiEvent}:${a.dataset.umamiEventPlatform}`).sort(),
+  };
+});
+check("analytics: Umami's script, with the ID cleaned up, this site's domains and Do Not Track", !!tracking.umami && tracking.umami.src === "https://cloud.umami.is/script.js" && tracking.umami.id === FAKE_UMAMI && tracking.umami.domains.split(",").includes(tracking.host) && tracking.umami.dnt === "true" && tracking.umami.defer, JSON.stringify(tracking.umami));
+check("analytics: Cloudflare's beacon, with the token picked out of a pasted snippet", tracking.cf === '{"token":"0123456789abcdef0123456789abcdef"}', String(tracking.cf));
+check("analytics: each download link is a Download event with its build", JSON.stringify(tracking.platforms) === JSON.stringify(["Download:linux-arm64", "Download:linux-x64", "Download:mac-arm64", "Download:mac-x64", "Download:win-arm64", "Download:win-x64"]), tracking.platforms.join(" "));
+
+await frame.waitForFunction(() => !!window.umami, null, { timeout: 30_000 }).catch(() => note("Umami's script did not load"));
+for (let i = 0; i < 20 && !umamiSent.some((sent) => sent?.type === "event" && !sent.payload?.name); i += 1) await page.waitForTimeout(500);
+check("analytics: Umami sends the page view", umamiSent.some((sent) => sent?.type === "event" && sent.payload?.website === FAKE_UMAMI && !sent.payload?.name), JSON.stringify(umamiSent).slice(0, 300));
+/* The link's own file is 0.9 GB: send it nowhere, and keep the attributes. */
+await frame.evaluate(() => {
+  const link = document.querySelector('.dl-file[data-umami-event-platform="win-x64"]');
+  link.href = `${location.href.split("#")[0]}#download`;
+});
+await frame.locator('.dl-file[data-umami-event-platform="win-x64"]').click();
+for (let i = 0; i < 20 && !umamiSent.some((sent) => sent?.payload?.name === "Download"); i += 1) await page.waitForTimeout(500);
+const click = umamiSent.find((sent) => sent?.payload?.name === "Download");
+check("analytics: a click on Windows x64 sends Download with platform win-x64", click?.payload?.data?.platform === "win-x64" && click?.payload?.website === FAKE_UMAMI, JSON.stringify(click ?? umamiSent.slice(-1)).slice(0, 300));
+note(`Umami was sent: ${umamiSent.map((sent) => sent?.payload?.name ?? "pageview").join(", ")}`);
+
+await customize({ nota_umami_id: "", nota_cf_token: "" });
+frame = await goto("/?as_visitor=1");
+const off = await frame.evaluate(() => ({ scripts: document.querySelectorAll("script[data-website-id], script[data-cf-beacon]").length, tracked: document.querySelectorAll("[data-umami-event]").length }));
+check("analytics: emptied fields count nothing and leave no attributes", off.scripts === 0 && off.tracked === 0, JSON.stringify(off));
+await context.unrouteAll({ behavior: "ignoreErrors" });
 
 /* --- The rest of the site -------------------------------------------------------------- */
 

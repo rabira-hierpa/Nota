@@ -36,12 +36,26 @@ function nota_document_title( $title ) {
 add_filter( 'pre_get_document_title', 'nota_document_title', 99 );
 
 /**
+ * The release notes page's title, in its language.
+ *
+ * @param array<string, string> $parts The title's parts.
+ * @return array<string, string>
+ */
+function nota_releases_title_parts( $parts ) {
+	if ( nota_is_releases() && ! nota_seo_plugin_active() && '' !== nota_plain( 'releases_title' ) ) {
+		$parts['title'] = nota_plain( 'releases_title' );
+	}
+	return $parts;
+}
+add_filter( 'document_title_parts', 'nota_releases_title_parts' );
+
+/**
  * WordPress's canonical and short links know nothing of ?lang, so they go.
  *
  * @return void
  */
 function nota_seo_cleanup() {
-	if ( nota_is_landing() ) {
+	if ( nota_is_landing() || ( nota_is_releases() && ! nota_seo_plugin_active() ) ) {
 		remove_action( 'wp_head', 'rel_canonical' );
 		remove_action( 'wp_head', 'wp_shortlink_wp_head' );
 	}
@@ -64,52 +78,16 @@ function nota_og_image_url() {
  * @return void
  */
 function nota_seo_head() {
+	if ( nota_is_releases() ) {
+		nota_seo_releases_head();
+		return;
+	}
 	if ( ! nota_is_landing() ) {
 		return;
 	}
 
-	$url = nota_lang_url( nota_lang() );
-
 	if ( ! nota_seo_plugin_active() ) {
-		$title       = nota_plain( 'seo_title' );
-		$description = nota_plain( 'seo_description' );
-		$image       = nota_og_image_url();
-		$is_am       = 'am' === nota_lang();
-
-		if ( '' !== $description ) {
-			printf( '<meta name="description" content="%s">' . "\n", esc_attr( $description ) );
-		}
-		printf( '<link rel="canonical" href="%s">' . "\n", esc_url( $url ) );
-
-		$properties = array(
-			'og:type'             => 'website',
-			'og:site_name'        => 'Nota',
-			'og:title'            => $title,
-			'og:description'      => $description,
-			'og:url'              => $url,
-			'og:image'            => $image,
-			'og:image:width'      => '1200',
-			'og:image:height'     => '630',
-			'og:locale'           => $is_am ? 'am_ET' : 'en_US',
-			'og:locale:alternate' => $is_am ? 'en_US' : 'am_ET',
-		);
-		foreach ( $properties as $property => $content ) {
-			if ( '' !== $content ) {
-				printf( '<meta property="%s" content="%s">' . "\n", esc_attr( $property ), esc_attr( $content ) );
-			}
-		}
-
-		$cards = array(
-			'twitter:card'        => 'summary_large_image',
-			'twitter:title'       => $title,
-			'twitter:description' => $description,
-			'twitter:image'       => $image,
-		);
-		foreach ( $cards as $name => $content ) {
-			if ( '' !== $content ) {
-				printf( '<meta name="%s" content="%s">' . "\n", esc_attr( $name ), esc_attr( $content ) );
-			}
-		}
+		nota_seo_tags( nota_plain( 'seo_title' ), nota_plain( 'seo_description' ), nota_lang_url( nota_lang() ) );
 	}
 
 	foreach ( array( 'en', 'am' ) as $lang ) {
@@ -120,6 +98,71 @@ function nota_seo_head() {
 	nota_seo_json_ld();
 }
 add_action( 'wp_head', 'nota_seo_head', 2 );
+
+/**
+ * The release notes page's tags: its own canonical in each language, and the links
+ * between the two.
+ *
+ * @return void
+ */
+function nota_seo_releases_head() {
+	if ( ! nota_seo_plugin_active() ) {
+		$title = nota_plain( 'releases_title' );
+		nota_seo_tags( '' !== $title ? $title . ' · Nota' : 'Nota', nota_plain( 'releases_intro' ), nota_page_lang_url( nota_lang() ) );
+	}
+	foreach ( array( 'en', 'am' ) as $lang ) {
+		printf( '<link rel="alternate" hreflang="%s" href="%s">' . "\n", esc_attr( $lang ), esc_url( nota_page_lang_url( $lang ) ) );
+	}
+	printf( '<link rel="alternate" hreflang="x-default" href="%s">' . "\n", esc_url( nota_page_lang_url( nota_base_lang() ) ) );
+}
+
+/**
+ * Description, canonical, Open Graph and Twitter tags.
+ *
+ * @param string $title       Title for sharing.
+ * @param string $description Description, or nothing.
+ * @param string $url         This page's address in its language.
+ * @return void
+ */
+function nota_seo_tags( $title, $description, $url ) {
+	$image = nota_og_image_url();
+	$is_am = 'am' === nota_lang();
+
+	if ( '' !== $description ) {
+		printf( '<meta name="description" content="%s">' . "\n", esc_attr( $description ) );
+	}
+	printf( '<link rel="canonical" href="%s">' . "\n", esc_url( $url ) );
+
+	$properties = array(
+		'og:type'             => 'website',
+		'og:site_name'        => 'Nota',
+		'og:title'            => $title,
+		'og:description'      => $description,
+		'og:url'              => $url,
+		'og:image'            => $image,
+		'og:image:width'      => '1200',
+		'og:image:height'     => '630',
+		'og:locale'           => $is_am ? 'am_ET' : 'en_US',
+		'og:locale:alternate' => $is_am ? 'en_US' : 'am_ET',
+	);
+	foreach ( $properties as $property => $content ) {
+		if ( '' !== $content ) {
+			printf( '<meta property="%s" content="%s">' . "\n", esc_attr( $property ), esc_attr( $content ) );
+		}
+	}
+
+	$cards = array(
+		'twitter:card'        => 'summary_large_image',
+		'twitter:title'       => $title,
+		'twitter:description' => $description,
+		'twitter:image'       => $image,
+	);
+	foreach ( $cards as $name => $content ) {
+		if ( '' !== $content ) {
+			printf( '<meta name="%s" content="%s">' . "\n", esc_attr( $name ), esc_attr( $content ) );
+		}
+	}
+}
 
 /**
  * Prints the structured data. It says only what the page says: the price is the
@@ -227,7 +270,7 @@ function nota_seo_json_ld() {
  * @return void
  */
 function nota_seo_singular_description() {
-	if ( nota_is_landing() || nota_seo_plugin_active() || ! is_singular() || post_password_required() ) {
+	if ( nota_is_bilingual() || nota_seo_plugin_active() || ! is_singular() || post_password_required() ) {
 		return;
 	}
 	$excerpt = trim( wp_strip_all_tags( get_the_excerpt() ) );

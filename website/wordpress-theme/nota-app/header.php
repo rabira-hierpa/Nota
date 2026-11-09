@@ -57,8 +57,8 @@ if ( nota_is_landing() || ! function_exists( 'elementor_theme_do_location' ) || 
 			// Each language switch is a plain link, so it works with no script and each page can be cached.
 			?>
 			<ul class="lang-switch" aria-label="<?php echo esc_attr( nota_ui( 'language' ) ); ?>">
-				<li><a href="<?php echo esc_url( nota_lang_url( 'en' ) ); ?>" hreflang="en" lang="en"<?php echo 'en' === $nota_lang ? ' aria-current="true"' : ''; ?>>EN</a></li>
-				<li><a href="<?php echo esc_url( nota_lang_url( 'am' ) ); ?>" hreflang="am" lang="am"<?php echo 'am' === $nota_lang ? ' aria-current="true"' : ''; ?>>አማ</a></li>
+				<li><a href="<?php echo esc_url( nota_page_lang_url( 'en' ) ); ?>" hreflang="en" lang="en"<?php echo 'en' === $nota_lang ? ' aria-current="true"' : ''; ?>>EN</a></li>
+				<li><a href="<?php echo esc_url( nota_page_lang_url( 'am' ) ); ?>" hreflang="am" lang="am"<?php echo 'am' === $nota_lang ? ' aria-current="true"' : ''; ?>>አማ</a></li>
 			</ul>
 
 			<button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="<?php echo esc_attr( nota_ui( 'theme' ) ); ?>">

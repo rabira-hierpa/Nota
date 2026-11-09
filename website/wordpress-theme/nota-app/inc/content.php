@@ -393,8 +393,8 @@ function nota_content_sections() {
 				'phone_caveat'   => array(
 					'label' => 'Phone: how to get it today',
 					'type'  => 'textarea',
-					'en'    => 'Not in the app stores yet. For now you build the app from source (Android 7 or iOS 16 and later), then copy the speech models, 841 MB, to the phone from a computer. Transcribing needs about 2 GB of free memory.',
-					'am'    => 'እስካሁን በመተግበሪያ መደብሮች ውስጥ የለም። ለጊዜው መተግበሪያውን ከምንጩ ኮድ ይገነባሉ (Android 7 ወይም iOS 16 እና ከዚያ በኋላ)፣ ከዚያም 841 ሜባ የሆኑትን የንግግር ሞዴሎች ከኮምፒውተር ወደ ስልኩ ይቀዳሉ። ወደ ጽሑፍ መቀየር 2 ጊባ ያህል ነፃ ማህደረ ትውስታ ይፈልጋል።',
+					'en'    => 'Not in the app stores yet. For now you build the app from source (Android 7 or iOS 16 and later). The first time, the app downloads its speech models, 841 MB, on the Speech models screen; use Wi-Fi if you can. You can also copy them over from a computer. Transcribing needs about 2 GB of free memory.',
+					'am'    => 'እስካሁን በመተግበሪያ መደብሮች ውስጥ የለም። ለጊዜው መተግበሪያውን ከምንጩ ኮድ ይገነባሉ (Android 7 ወይም iOS 16 እና ከዚያ በኋላ)። ለመጀመሪያ ጊዜ መተግበሪያው 841 ሜባ የሆኑትን የንግግር ሞዴሎች በ«የንግግር ሞዴሎች» ገጽ ላይ ያወርዳል፤ ከተቻለ Wi-Fi ይጠቀሙ። ሞዴሎቹን ከኮምፒውተርም መቅዳት ይችላሉ። ወደ ጽሑፍ መቀየር 2 ጊባ ያህል ነፃ ማህደረ ትውስታ ይፈልጋል።',
 				),
 				'phone_guide'    => array(
 					'label' => 'Phone: link to the build guide',
@@ -448,6 +448,16 @@ function nota_content_sections() {
 					'label' => 'Version label ({version} is the version number)',
 					'en'    => 'Version {version}',
 					'am'    => 'ስሪት {version}',
+				),
+				'download_notes'      => array(
+					'label' => 'Link to that version\'s release notes ({version} is the version number)',
+					'en'    => 'What\'s new in {version}',
+					'am'    => 'የ{version} አዳዲስ ነገሮች',
+				),
+				'download_count'      => array(
+					'label' => 'Download total, when Visits and downloads says to show it ({count} is the number)',
+					'en'    => '{count} downloads so far',
+					'am'    => 'እስካሁን {count} ጊዜ ወርዷል',
 				),
 				'dl_first_launch'     => array(
 					'label' => 'Label for the first-launch help',
@@ -566,8 +576,8 @@ function nota_content_sections() {
 				'faq_1_a'   => array(
 					'label' => 'Answer 1',
 					'type'  => 'textarea',
-					'en'    => 'No. Notes, speech and fonts are all on your device. The one exception is speech on an Apple silicon Mac still on macOS 13, where a one-time setup downloads the model. After that it works offline too.',
-					'am'    => 'አይፈልግም። ማስታወሻዎች፣ ንግግርና ፊደሎች ሁሉም በመሣሪያዎ ላይ ናቸው። ብቸኛው ልዩነት በmacOS 13 ላይ ያለ Apple silicon ማክ ነው፤ እዚያ የአንድ ጊዜ ማዋቀር ሞዴሉን ያወርዳል። ከዚያ በኋላ እሱም ያለ ኢንተርኔት ይሠራል።',
+					'en'    => 'No. Notes, speech and fonts are all on your device. Speech goes online once in two cases: the phone app downloads its speech models the first time (or you copy them from a computer), and an Apple silicon Mac still on macOS 13 downloads the model in a one-time setup. After that, both work offline.',
+					'am'    => 'አይፈልግም። ማስታወሻዎች፣ ንግግርና ፊደሎች ሁሉም በመሣሪያዎ ላይ ናቸው። ንግግር ኢንተርኔት የሚፈልገው በሁለት ሁኔታዎች አንድ ጊዜ ብቻ ነው፤ የስልኩ መተግበሪያ የንግግር ሞዴሎቹን ለመጀመሪያ ጊዜ ሲያወርድ (ከኮምፒውተርም መቅዳት ይቻላል)፣ እና በmacOS 13 ላይ ያለ Apple silicon ማክ በአንድ ጊዜ ማዋቀር ሞዴሉን ሲያወርድ። ከዚያ በኋላ ሁለቱም ያለ ኢንተርኔት ይሠራሉ።',
 				),
 				'faq_2_q'   => array(
 					'label' => 'Question 2',
@@ -577,8 +587,8 @@ function nota_content_sections() {
 				'faq_2_a'   => array(
 					'label' => 'Answer 2',
 					'type'  => 'textarea',
-					'en'    => 'Yes. Nota is free and open source under the MIT License. The speech models that ship with it keep their own licences.',
-					'am'    => 'አዎ። Nota በMIT ፈቃድ ነፃና ክፍት ምንጭ ነው። አብረውት የሚመጡት የንግግር ሞዴሎች የራሳቸው ፈቃድ አላቸው።',
+					'en'    => 'Yes. Nota is free and open source under the MIT License. The speech models it uses keep their own licences.',
+					'am'    => 'አዎ። Nota በMIT ፈቃድ ነፃና ክፍት ምንጭ ነው። የሚጠቀማቸው የንግግር ሞዴሎች የራሳቸው ፈቃድ አላቸው።',
 				),
 				'faq_3_q'   => array(
 					'label' => 'Question 3',
@@ -666,6 +676,22 @@ function nota_content_sections() {
 					'type'  => 'textarea',
 					'en'    => 'Speech by <a href="https://huggingface.co/snapwre/hohe-asr-amharic">Hohe ASR</a>, by Chapi and the Dataset.ET contributors, licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Made by Rz Codes.',
 					'am'    => 'ንግግር በ<a href="https://huggingface.co/snapwre/hohe-asr-amharic">Hohe ASR</a>፣ በChapi እና በDataset.ET አስተዋጽኦ አድራጊዎች፣ በ<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> ፈቃድ። በRz Codes የተሠራ።',
+				),
+			),
+		),
+		'releases'  => array(
+			'title'  => 'Release notes page',
+			'fields' => array(
+				'releases_title' => array(
+					'label' => 'Heading',
+					'en'    => 'Release notes',
+					'am'    => 'የስሪት ማስታወሻዎች',
+				),
+				'releases_intro' => array(
+					'label' => 'Text under the heading, also the description in search results',
+					'type'  => 'textarea',
+					'en'    => 'What changed in each version of Nota, from the notes published with it on GitHub.',
+					'am'    => 'በእያንዳንዱ የNota ስሪት ምን እንደተቀየረ፣ ከስሪቱ ጋር በGitHub ላይ ከወጣው ማስታወሻ።',
 				),
 			),
 		),
@@ -866,6 +892,38 @@ function nota_ui_strings() {
 		'comments'   => array(
 			'en' => 'Comments',
 			'am' => 'አስተያየቶች',
+		),
+		'releases_latest' => array(
+			'en' => 'Latest',
+			'am' => 'የቅርብ ጊዜው',
+		),
+		'releases_prerelease' => array(
+			'en' => 'Pre-release',
+			'am' => 'የሙከራ ስሪት',
+		),
+		'releases_github' => array(
+			'en' => 'On GitHub',
+			'am' => 'በGitHub ላይ',
+		),
+		'releases_all' => array(
+			'en' => 'All versions on GitHub',
+			'am' => 'ሁሉም ስሪቶች በGitHub ላይ',
+		),
+		'releases_english_only' => array(
+			'en' => 'These notes are in English only.',
+			'am' => 'የዚህ ስሪት ማስታወሻ በእንግሊዝኛ ብቻ ነው።',
+		),
+		'releases_error' => array(
+			'en' => 'The release notes can\'t be loaded just now.',
+			'am' => 'የስሪት ማስታወሻዎቹ አሁን ሊጫኑ አልቻሉም።',
+		),
+		'releases_download' => array(
+			'en' => '{count} download',
+			'am' => '{count} ጊዜ ወርዷል',
+		),
+		'releases_downloads' => array(
+			'en' => '{count} downloads',
+			'am' => '{count} ጊዜ ወርዷል',
 		),
 	);
 }

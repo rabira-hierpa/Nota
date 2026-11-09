@@ -61,7 +61,75 @@ function nota_customize_register( $wp_customize ) {
 	nota_customize_front_mode( $wp_customize );
 	nota_customize_copy( $wp_customize );
 	nota_customize_links( $wp_customize );
+	nota_customize_stats( $wp_customize );
 	nota_customize_images( $wp_customize );
+}
+
+/**
+ * Counting visits and download clicks, and showing download numbers.
+ *
+ * @param WP_Customize_Manager $wp_customize The Customizer.
+ * @return void
+ */
+function nota_customize_stats( $wp_customize ) {
+	$wp_customize->add_section(
+		'nota_stats',
+		array(
+			'title'       => 'Visits and downloads',
+			'description' => 'Visits and clicks on each download button are counted by Umami, which sets no cookies, so the site needs no cookie banner. Nothing is counted for people logged in to this site, so your own visits stay out. Download totals from GitHub are on the Dashboard.',
+			'panel'       => 'nota_landing',
+		)
+	);
+
+	$fields = array(
+		'nota_umami_id'       => array(
+			'label'       => 'Umami website ID',
+			'description' => 'In Umami, under Settings, Websites, your site, Edit. It looks like 4f3c2a1b-0000-4000-8000-123456789abc. Leave empty to count nothing.',
+			'default'     => '',
+			'sanitize'    => 'nota_sanitize_umami_id',
+			'type'        => 'text',
+		),
+		'nota_umami_src'      => array(
+			'label'       => 'Umami script address',
+			'description' => 'Change it only if you run Umami on your own server.',
+			'default'     => NOTA_UMAMI_SCRIPT,
+			'sanitize'    => 'esc_url_raw',
+			'type'        => 'url',
+		),
+		'nota_cf_token'       => array(
+			'label'       => 'Cloudflare Web Analytics token (optional)',
+			'description' => 'Counts visits but not download clicks. Leave it empty if Cloudflare already adds Web Analytics to the site for you.',
+			'default'     => '',
+			'sanitize'    => 'nota_sanitize_cf_token',
+			'type'        => 'text',
+		),
+		'nota_show_downloads' => array(
+			'label'       => 'Show download numbers on the site',
+			'description' => 'The total from GitHub under the download links, and each version\'s count on the release notes page. Off until the numbers help.',
+			'default'     => false,
+			'sanitize'    => 'nota_sanitize_checkbox',
+			'type'        => 'checkbox',
+		),
+	);
+
+	foreach ( $fields as $key => $field ) {
+		$wp_customize->add_setting(
+			$key,
+			array(
+				'default'           => $field['default'],
+				'sanitize_callback' => $field['sanitize'],
+			)
+		);
+		$wp_customize->add_control(
+			$key,
+			array(
+				'label'       => $field['label'],
+				'description' => $field['description'],
+				'section'     => 'nota_stats',
+				'type'        => $field['type'],
+			)
+		);
+	}
 }
 add_action( 'customize_register', 'nota_customize_register' );
 

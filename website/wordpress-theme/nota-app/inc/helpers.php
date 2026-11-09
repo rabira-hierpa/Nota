@@ -333,7 +333,7 @@ function nota_shot( $name, $alt, $args = array() ) {
 }
 
 /**
- * The download groups, each with its files and working links.
+ * The download groups, each with its files, working links and the build each is.
  *
  * @return array<int, array<string, mixed>>
  */
@@ -345,8 +345,8 @@ function nota_downloads() {
 			'icon'  => 'apple-logo',
 			'note'  => 'dl_mac_note',
 			'files' => array(
-				array( 'mac_silicon_url', 'dl_mac_silicon', 'Nota-%s-mac-arm64.dmg' ),
-				array( 'mac_intel_url', 'dl_mac_intel', 'Nota-%s-mac-x64.dmg' ),
+				array( 'mac_silicon_url', 'dl_mac_silicon', 'Nota-%s-mac-arm64.dmg', 'mac-arm64' ),
+				array( 'mac_intel_url', 'dl_mac_intel', 'Nota-%s-mac-x64.dmg', 'mac-x64' ),
 			),
 		),
 		array(
@@ -355,8 +355,8 @@ function nota_downloads() {
 			'icon'  => 'windows-logo',
 			'note'  => 'dl_win_note',
 			'files' => array(
-				array( 'win_x64_url', 'dl_win_x64', 'Nota-%s-win-x64-setup.exe' ),
-				array( 'win_arm_url', 'dl_win_arm', 'Nota-%s-win-arm64-setup.exe' ),
+				array( 'win_x64_url', 'dl_win_x64', 'Nota-%s-win-x64-setup.exe', 'win-x64' ),
+				array( 'win_arm_url', 'dl_win_arm', 'Nota-%s-win-arm64-setup.exe', 'win-arm64' ),
 			),
 		),
 		array(
@@ -365,8 +365,8 @@ function nota_downloads() {
 			'icon'  => 'linux-logo',
 			'note'  => 'dl_linux_note',
 			'files' => array(
-				array( 'linux_x64_url', 'dl_linux_x64', 'Nota-%s-linux-x86_64.AppImage' ),
-				array( 'linux_arm_url', 'dl_linux_arm', 'Nota-%s-linux-arm64.AppImage' ),
+				array( 'linux_x64_url', 'dl_linux_x64', 'Nota-%s-linux-x86_64.AppImage', 'linux-x64' ),
+				array( 'linux_arm_url', 'dl_linux_arm', 'Nota-%s-linux-arm64.AppImage', 'linux-arm64' ),
 			),
 		),
 	);
@@ -376,13 +376,14 @@ function nota_downloads() {
 
 	foreach ( $groups as &$group ) {
 		foreach ( $group['files'] as &$file ) {
-			list( $url_key, $copy_key, $pattern ) = $file;
+			list( $url_key, $copy_key, $pattern, $platform ) = $file;
 
 			$override = nota_opt( $url_key );
 			$file     = array(
-				'url'   => '' !== $override ? $override : $base . sprintf( $pattern, rawurlencode( $version ) ),
-				'label' => $copy_key,
-				'meta'  => $copy_key . '_meta',
+				'url'      => '' !== $override ? $override : $base . sprintf( $pattern, rawurlencode( $version ) ),
+				'label'    => $copy_key,
+				'meta'     => $copy_key . '_meta',
+				'platform' => $platform,
 			);
 		}
 		unset( $file );
@@ -445,9 +446,19 @@ function nota_nav_items() {
  * @return string
  */
 function nota_ethiopian_today() {
+	return nota_ethiopian_date( time() );
+}
+
+/**
+ * A day in the Ethiopian calendar, in the site's time zone.
+ *
+ * @param int $timestamp Unix time.
+ * @return string
+ */
+function nota_ethiopian_date( $timestamp ) {
 	$epoch  = 1724221;
 	$months = array( 'መስከረም', 'ጥቅምት', 'ኅዳር', 'ታኅሣሥ', 'ጥር', 'የካቲት', 'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሐሴ', 'ጳጉሜ' );
-	$jdn    = (int) round( gmmktime( 0, 0, 0, (int) wp_date( 'n' ), (int) wp_date( 'j' ), (int) wp_date( 'Y' ) ) / DAY_IN_SECONDS ) + 2440588;
+	$jdn    = (int) round( gmmktime( 0, 0, 0, (int) wp_date( 'n', $timestamp ), (int) wp_date( 'j', $timestamp ), (int) wp_date( 'Y', $timestamp ) ) / DAY_IN_SECONDS ) + 2440588;
 	$start  = static function ( $y, $m, $d ) use ( $epoch ) {
 		return $epoch - 1 + 365 * ( $y - 1 ) + (int) floor( $y / 4 ) + 30 * ( $m - 1 ) + $d;
 	};

@@ -54,12 +54,112 @@ Amharic page. Empty a field to hide that text.
 | A screenshot | **Screenshots**, which replaces it in both languages |
 | Search title and description | **Search and sharing** |
 | Logo and site icon | **Site Identity** |
+| Visit counting, and download numbers on the page | **Visits and downloads** (below) |
+| The release notes page's heading and intro | **Release notes page** (below) |
 | Extra menu links, such as a blog | **Menus**, the two *optional* locations |
 
 Why the Customizer, and not blocks: each sentence gets its English and Amharic field
 together with a live preview, nobody can break the layout by moving something, and it
 keeps out of Elementor's way. Blocks would have meant two pages to keep in step, or a
 translation plugin.
+
+## Visits and downloads
+
+### Counting visits and download clicks: Umami
+
+The theme counts with [Umami](https://umami.is). It sets no cookies and keeps
+nothing that identifies a visitor, so the site needs no cookie banner, which fits an
+app that promises nothing leaves your device. Its free cloud plan (Hobby: up to
+100,000 events a month, one website, six months of history, per umami.is/pricing in
+November 2026) also counts custom events, and that is what says which download
+button people press. It doesn't care where nota.et's DNS is.
+
+The others were weighed and set aside:
+
+- **Cloudflare Web Analytics** is free and cookieless too, but it has no custom
+  events (its FAQ: "Not yet"), so it can't count the buttons. Moving the DNS to
+  Cloudflare wouldn't change that. The theme still takes its token, for visits only,
+  if you want it as well.
+- **Hostinger's statistics** come from the server, and a click on a download button
+  goes to GitHub, never to the server, so they can't count clicks either.
+- **Google Analytics 4** counts everything, but it sets cookies, so the site would
+  need a consent banner, and it sends each visit to Google.
+
+To switch it on:
+
+1. Make a free account at umami.is, choose **Add website**, name it Nota, domain
+   `nota.et`.
+2. Copy its **Website ID** (Settings, Websites, Edit; it also appears in the
+   tracking code as `data-website-id`).
+3. In WordPress: **Appearance, Customize, Nota landing page, Visits and downloads**.
+   Paste it into **Umami website ID**, then **Publish**.
+4. Purge the caches (LiteSpeed Cache, Toolbox, Purge All, and the CDN in hPanel), so
+   cached pages get the script.
+5. Check it: open nota.et in a private window, where you aren't logged in. Umami's
+   **Realtime** shows the visit. Nothing is counted while you are logged in to
+   WordPress, nor in the Customizer's preview, so your own visits stay out.
+
+A click on a download button is an event named **Download**, with a property
+`platform`: `mac-arm64`, `mac-x64`, `win-x64`, `win-arm64`, `linux-x64` or
+`linux-arm64` (and `android` or `ios` once those buttons have links). In Umami:
+**Events**, then **Download**, then the **platform** property. Umami waits until the
+click is sent before it starts the download. Each page view, each event and each
+event property counts toward the plan's 100,000, so a download click counts twice.
+
+The script carries `data-domains`, so a copy of the page served from another address
+(the temporary hostingersite.com one) isn't counted, and `data-do-not-track`, so
+browsers that ask not to be tracked aren't.
+
+### Download counts
+
+GitHub counts every download of every release file. The theme reads those numbers
+with the release notes, in one request to GitHub's API, and keeps them:
+
+- **Dashboard, Nota downloads** shows the total, each build (latest release and all
+  releases) and each release. GitHub counts each file, the `.zip` and `.tar.gz` too,
+  including your own downloads and automated ones; a build's row adds up its
+  installer and its archive.
+- The theme asks GitHub again every six hours, through WP-Cron, never during a
+  visitor's page view (only a site that has never fetched waits, once). After you
+  publish a release, press **Ask GitHub now** in that box.
+- If GitHub can't be reached, the last numbers stay and the box says why. The API
+  allows 60 requests an hour per server address, which on shared hosting other sites
+  share. The theme sends GitHub's ETag, and an unchanged answer doesn't count against
+  that. If the box ever says the limit was reached, a token raises it to 5,000: put
+  `define( 'NOTA_GITHUB_TOKEN', 'github_pat_...' );` in `wp-config.php`, with a
+  fine-grained token that has no permissions beyond public repositories. That is
+  optional.
+
+To show the numbers to visitors, tick **Show download numbers on the site** under
+Visits and downloads. The total appears under the version in the download section
+("{count} downloads so far", editable under Download), and each version's count on
+the release notes page. It is off by default: small numbers don't help.
+
+### Release notes
+
+1. **Pages, Add New Page**, title `Releases`, and publish. The theme turns a page at
+   `/releases/` or `/release-notes/` into the release notes by itself. For another
+   address, pick the template **Nota release notes** in the page's settings.
+2. Add it to a menu if you like: **Appearance, Menus**, one of the two *optional*
+   locations.
+
+The page shows the newest ten releases from GitHub, newest first: name, date, a
+Latest badge, the notes, a link to the release on GitHub, and a download button by
+the latest. The notes are GitHub's own rendering of the release's Markdown, cleaned
+again by the theme: no scripts, styles, frames, forms or pictures, and links only to
+`http`, `https` and `mailto`. The download section's "What's new in 0.3.0" link goes
+to that version's notes.
+
+The Amharic page is `/releases/?lang=am`, with the heading and intro from the
+Customizer (**Release notes page**) and dates in the Ethiopian calendar. Release notes
+are written in English, so it says so above them, unless a release's notes on GitHub
+have a section headed `## አማርኛ`: then that section shows on the Amharic page, and
+the English page leaves it out. Write it at the end of the notes, and GitHub readers
+see both.
+
+Anything written in the page itself shows under the intro. The shortcode
+`[nota_releases count="3"]` puts the list in any page, Elementor's too. LiteSpeed Cache
+keeps these pages at most a day, and the theme clears them when the notes change.
 
 ## What's here
 
@@ -69,6 +169,11 @@ wordpress-theme/nota-app/    the theme
   inc/customizer.php         the fields, built from that table
   inc/seo.php                title, description, hreflang, Open Graph, JSON-LD
   inc/elementor.php          keeps Elementor's files off the landing page
+  inc/github.php             releases and download counts from GitHub, cached
+  inc/releases.php           the release notes page and [nota_releases]
+  inc/analytics.php          Umami (and Cloudflare) scripts, download click events
+  inc/dashboard.php          the Dashboard's Nota downloads box
+  page-templates/            the release notes template
   template-parts/landing/    the page's sections
 scripts/
   capture-desktop.mjs        the app's screens and clips, with sample notes

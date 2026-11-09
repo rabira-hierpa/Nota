@@ -35,10 +35,10 @@ $nota_signup  = (string) get_theme_mod( 'nota_signup_shortcode', '' );
 					<?php nota_field( 'phone_caveat', 'p', 'caveat' ); ?>
 					<div class="device__actions">
 						<?php if ( '' !== $nota_android ) : ?>
-							<a class="button button--primary" href="<?php echo esc_url( $nota_android ); ?>" rel="noopener"><?php nota_text( 'phone_android' ); ?></a>
+							<a class="button button--primary" href="<?php echo esc_url( $nota_android ); ?>" rel="noopener"<?php echo nota_track_download( 'android' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped in nota_track_download(). ?>><?php nota_text( 'phone_android' ); ?></a>
 						<?php endif; ?>
 						<?php if ( '' !== $nota_ios ) : ?>
-							<a class="button button--primary" href="<?php echo esc_url( $nota_ios ); ?>" rel="noopener"><?php nota_text( 'phone_ios' ); ?></a>
+							<a class="button button--primary" href="<?php echo esc_url( $nota_ios ); ?>" rel="noopener"<?php echo nota_track_download( 'ios' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped in nota_track_download(). ?>><?php nota_text( 'phone_ios' ); ?></a>
 						<?php endif; ?>
 						<?php if ( '' !== $nota_guide && '' !== nota_t( 'phone_guide' ) ) : ?>
 							<a class="text-link" href="<?php echo esc_url( $nota_guide ); ?>" rel="noopener">
