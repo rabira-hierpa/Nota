@@ -1,0 +1,18 @@
+/*
+Theme Name: Nota
+Theme URI: https://github.com/rabira-hierpa/Nota
+Author: Rz Codes
+Author URI: https://github.com/rabira-hierpa
+Description: The marketing site for Nota, offline Amharic notes you can write or speak. A bilingual landing page (English and Amharic) in Nota's own green and gold, light and dark, with every word and link editable under Appearance, Customize. Needs no plugins and has its own SEO tags.
+Version: 1.2.0
+Requires at least: 6.2
+Tested up to: 7.1
+Requires PHP: 7.4
+License: MIT
+License URI: https://opensource.org/license/mit
+Update URI: false
+Text Domain: nota-app
+Tags: one-column, custom-logo, custom-menu, featured-images, editor-style, blog
+*/
+
+/* The styles are in assets/css/site.css, which functions.php loads. */

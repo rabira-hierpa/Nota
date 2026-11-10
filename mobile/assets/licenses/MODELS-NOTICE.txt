@@ -1,0 +1,31 @@
+Speech models used by Nota
+
+These files are not covered by Nota's own MIT licence: each keeps the
+licence named below. They are provided as is, without warranties of any
+kind.
+
+hohe-w8.onnx, hohe.json
+  Hohe ASR Amharic by Chapi and the Dataset.ET contributors (Snapwre),
+  https://huggingface.co/snapwre/hohe-asr-amharic
+  (revision 217712df448adc0956b2d1b3f13bc30466c8733b), licensed CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/).
+  Fine-tuned from Ethio-ASR multilingual 600M by the Ethio-ASR Team
+  (Abdullah, Azime, Tonja et al., 2026, arXiv:2603.23654),
+  https://huggingface.co/badrex/Ethio-ASR-multilingual-600M, licensed
+  CC BY 4.0, itself built on w2v-BERT 2.0 by Meta,
+  https://huggingface.co/facebook/w2v-bert-2.0, licensed MIT (notice in
+  LICENSE-MIT-w2v-bert-2.0.txt).
+  Changed by Nota: exported to ONNX, weights stored in 8 bits and computed
+  with 8-bit inputs; its CTC tokens written out as hohe.json.
+
+punct-w8.onnx, punct.json
+  xlm-roberta_punctuation_fullstop_truecase by 1-800-BAD-CODE,
+  https://huggingface.co/1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase
+  (revision d1769a597ce8dfaa070d436bc67d4ee761f58884), licensed Apache-2.0
+  (text in LICENSE-Apache-2.0.txt).
+  Built on XLM-RoBERTa by Facebook AI,
+  https://github.com/facebookresearch/fairseq/tree/main/examples/xlmr,
+  licensed MIT (notice in LICENSE-MIT-xlm-roberta.txt).
+  Changed by Nota: word table cut to the pieces Amharic text uses, weights
+  stored in 8 bits; its tokenizer's kept pieces and labels written out as
+  punct.json.

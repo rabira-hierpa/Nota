@@ -23,7 +23,36 @@ model (`ModelId` in `shared/schemas/engine.ts`); main keeps one
 `TranscriptionEngine` (`electron/lib/transcription-engine.ts`) per model on
 offer:
 
-- `hohe` (default) and `buzzasr`: `AmharicModelEngine` runs
+- `hohe` built in (default where it can run): `BuiltInHoheEngine`
+  (`electron/speech/`) runs an 8-bit ONNX export of Hohe with
+  onnxruntime-node in a worker process (`speech-worker.ts`), with no Python
+  and nothing to download. `findBuiltInSpeech` picks it when the models and
+  ONNX Runtime's binding for this system are there and macOS is 14 or later;
+  on macOS 13 Hohe falls back to the Python setup below. Intel Macs have
+  neither (no binding, and the pinned PyTorch has no Intel build). What the
+  Python helper did is ported to TypeScript: `features.ts` (SeamlessM4T
+  log-mel features), `ctc.ts`, `split-at-pauses.ts`, `wav.ts`; features, CTC
+  and the punctuation path are checked against fixtures Python wrote
+  (`electron/speech/fixtures/`), the others by unit tests. A whole
+  recording then gets sentence ends from a punctuation model (`punctuate.ts`,
+  `sentencepiece.ts`: XLM-R cut to Amharic pieces, full stops and question
+  marks only, where both of its heads agree); dictation clips don't.
+  `npm run build:speech` (`scripts/build_speech_models.py`) downloads both
+  models at pinned revisions, exports and quantizes them into `models/` (not
+  in git, about 840 MB), with `manifest.json`, a `NOTICE` (the credits CC BY
+  asks for) and the licence texts it names, copied from `licenses/models/`
+  (`-- --notices-only` rewrites just those, checking the weights).
+  Packaging stops without them (`check-speech-models.mjs`, which also wants
+  `licenses/onnxruntime/` to match the installed ONNX Runtime's version); they
+  ship as extraResources with only the target's ONNX Runtime files (named per
+  platform block: electron-builder's `${platform}` is the build machine's) and
+  its notices, never Windows' DirectML or DirectX compiler DLLs (CPU only, and
+  Microsoft terms), and `after-pack.mjs` drops both where there is no binding
+  and otherwise fails a package missing a licence. Keep ONNX
+  Runtime's memory arena off: under Electron its doubling blocks reach the
+  allocator's 2 GB cap and the worker dies on long recordings
+  (`docs/embedded-speech.md`, "The arena under Electron").
+- `hohe` through Python, and `buzzasr`: `AmharicModelEngine` runs
   snapwre/hohe-asr-amharic (wav2vec2-BERT CTC) or BuzzASR/amharic (Whisper
   large-v3 fine-tune) through `electron/python/amharic_transcriber.py` on
   Nota's own Python runtime (`<data>/python`, from `scripts/speech-requirements.txt`;
@@ -110,7 +139,23 @@ src/        Next.js renderer, built as a static export (out/) and loaded over
             app://bundle in production, or from `next dev` on :3123 in dev.
 public/     static files served as-is, e.g. the dictation AudioWorklet.
 e2e/        Playwright tests that drive the built Electron app.
+licenses/   third-party licence texts, verbatim from upstream, that ship
+            with the models and ONNX Runtime.
+mobile/     the Flutter app for Android and iOS (its own README).
 ```
+
+The phone app keeps the desktop's note fields minus HTML (plain `text` is the
+note), ports the notes logic to `mobile/lib/features/notes/logic/` and the
+speech pipeline to `mobile/lib/features/speech/hohe/` (checked against the
+same `electron/speech/fixtures/`, copied to `mobile/test/fixtures/`), and runs
+Hohe through flutter_onnxruntime in 20 s pieces. The models aren't bundled:
+the app downloads them from `https://models.nota.et/v1/` (Cloudflare R2
+bucket `nota-models`, uploaded with rclone; a new set of models goes in a new
+folder), or the user copies them in (adb, Finder or the file picker). On iOS the plugin
+can't turn ONNX Runtime's arena off, so the weights stay out of it through a
+session config. Change a desktop module and its Dart port together. Toolchain:
+`~/flutter/bin`, Java 21 from Homebrew, SDK in `~/Library/Android/sdk`; the
+`nota_test` emulator (Android 16, 6 GB) runs `integration_test/hohe_eval_test.dart`.
 
 Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desktop.ts`)
 → `window.desktop` (`electron/preload.ts`) → IPC → `electron/ipc/desktop-handlers.ts`
@@ -127,7 +172,8 @@ Data flow: component → Zustand store action → `invokeDesktop` (`src/lib/desk
 | `npm run test:e2e` | Build, then drive the app with a fake mic and a fake VoiceStudio |
 | `npm run package` | Build a distributable with electron-builder |
 | `npm run setup:hohe` | Build the speech runtime and download Hohe (`setup:amharic-model -- buzzasr\|all` for the others) |
-| `npm run package:mac` / `package:linux` | Release builds in `release/` |
+| `npm run build:speech` | Build built-in Hohe and the punctuation model into `models/` (`-- --fixtures` rewrites the test fixtures too) |
+| `npm run package:mac` / `package:linux` | Release builds in `release/` (needs `models/`) |
 
 ## Rules
 
