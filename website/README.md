@@ -56,6 +56,7 @@ Amharic page. Empty a field to hide that text.
 | Logo and site icon | **Site Identity** |
 | Visit counting, and download numbers on the page | **Visits and downloads** (below) |
 | The release notes page's heading and intro | **Release notes page** (below) |
+| The beta sign-up page's words, closing it, the email at each sign-up | **Beta sign-up page** (below) |
 | Extra menu links, such as a blog | **Menus**, the two *optional* locations |
 
 Why the Customizer, and not blocks: each sentence gets its English and Amharic field
@@ -161,6 +162,51 @@ Anything written in the page itself shows under the intro. The shortcode
 `[nota_releases count="3"]` puts the list in any page, Elementor's too. LiteSpeed Cache
 keeps these pages at most a day, and the theme clears them when the notes change.
 
+## Beta sign-up
+
+1. **Pages, Add New Page**, title `Beta`, and publish. The theme turns a page at
+   `/beta/`, `/beta-signup/` or `/join-the-beta/` into the sign-up page by itself. For
+   another address, pick the template **Nota beta sign-up** in the page's settings.
+2. Share `https://nota.et/beta/`, or `https://nota.et/beta/?lang=am` for the Amharic
+   page. Both have their own title, description and sharing picture for X and Telegram.
+
+The form asks for a name, an email address, a Telegram username (typed as `abebe`,
+`@abebe` or a `t.me/abebe` link), the devices they'll test on, an optional note, and
+a tick to say you may contact them. A mistake comes back on the same page with what
+was typed kept, and the list of mistakes takes the focus; a sign-up goes to
+`?thanks=1`, which links back to the form for the next person.
+
+Everyone who signs up is under **Beta testers** in the admin menu, newest first, for
+administrators only. Search finds names, emails and usernames. Each row links to the
+email and to the Telegram chat; **Mark link as sent** (one row, or ticked rows with
+Bulk actions) records when you sent the build, and **Waiting for the link** lists who
+hasn't had it. **Download CSV** gives the whole list for a spreadsheet; it opens in
+Excel with Ge'ez names intact. Nobody can add or edit a sign-up by hand, only move it
+to the trash, and one restored from the trash goes back on the list. **Tools, Export
+Personal Data** and **Erase Personal Data** find sign-ups by email, in the trash too,
+and **Settings, Privacy** has a paragraph to add to your policy.
+
+**Appearance, Customize, Nota landing page, Beta sign-up page** has the page's words in
+both languages and two switches: **Take sign-ups** (untick to close the form) and
+**Email me at each sign-up**, which goes to the address under **Settings, General**,
+with Reply-To set to the tester, so replying writes to them. After fifty of those in a
+day (UTC) the rest of the day's sign-ups are only in the list, and the fiftieth email
+says so. Hostinger sends WordPress's mail; if none arrives, check the spam folder, or
+set up an SMTP plugin.
+
+The form suits page caching: it has no nonce for a cached copy to outlive, a sign-up is
+posted to its own page, which no cache keeps, and the thank-you is the same for
+everyone. One email address signs up once: a second sign-up with it is thanked and
+changes nothing, so nobody can rewrite someone else's. A field that people can't see
+catches robots, which are thanked and not kept. One address (or IPv6 /64 network) can
+sign up six times an hour and the whole site a thousand times a day; an address
+already on the list counts against neither. Behind Cloudflare the visitor's address
+comes from Cloudflare's header, believed only from Cloudflare's own addresses. No IP
+address is stored. With Umami on, each new sign-up counts once as the event **Beta
+sign-up**, with the page's language; a robot caught by the hidden field, an address
+already on the list, a reload and a shared thank-you link count nothing. The
+shortcode `[nota_beta_signup]` puts the form in any page.
+
 ## What's here
 
 ```
@@ -171,10 +217,12 @@ wordpress-theme/nota-app/    the theme
   inc/elementor.php          keeps Elementor's files off the landing page
   inc/github.php             releases and download counts from GitHub, cached
   inc/releases.php           the release notes page and [nota_releases]
+  inc/beta.php               the beta sign-up page, Beta testers in wp-admin, [nota_beta_signup]
   inc/analytics.php          Umami (and Cloudflare) scripts, download click events
   inc/dashboard.php          the Dashboard's Nota downloads box
-  page-templates/            the release notes template
+  page-templates/            the release notes and beta sign-up templates
   template-parts/landing/    the page's sections
+  template-parts/beta/       the sign-up form and its thank-you
 scripts/
   capture-desktop.mjs        the app's screens and clips, with sample notes
   capture-phone.py           the Android app's screens (emulator with -gpu host)

@@ -44,7 +44,7 @@ function nota_is_releases() {
  * @return bool
  */
 function nota_is_bilingual() {
-	return nota_is_landing() || nota_is_releases();
+	return nota_is_landing() || nota_is_releases() || nota_is_beta();
 }
 
 /**
@@ -98,14 +98,14 @@ function nota_releases_page_id() {
 }
 
 /**
- * This page's address in a language: the landing page, or the release notes page
- * with ?lang when that isn't the site's own language.
+ * This page's address in a language: the landing page, or the release notes or
+ * beta sign-up page with ?lang when that isn't the site's own language.
  *
  * @param string $lang 'am' or 'en'.
  * @return string
  */
 function nota_page_lang_url( $lang ) {
-	if ( ! nota_is_releases() ) {
+	if ( ! nota_is_releases() && ! nota_is_beta() ) {
 		return nota_lang_url( $lang );
 	}
 	$url = get_permalink( get_queried_object_id() );

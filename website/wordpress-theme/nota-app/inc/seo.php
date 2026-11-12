@@ -36,14 +36,37 @@ function nota_document_title( $title ) {
 add_filter( 'pre_get_document_title', 'nota_document_title', 99 );
 
 /**
- * The release notes page's title, in its language.
+ * The copy that names and describes this page, if it is one of the theme's own
+ * pages besides the landing page: the release notes or the beta sign-up.
+ *
+ * @return array{title: string, intro: string}|null Field keys.
+ */
+function nota_seo_page_copy() {
+	if ( nota_is_releases() ) {
+		return array(
+			'title' => 'releases_title',
+			'intro' => 'releases_intro',
+		);
+	}
+	if ( nota_is_beta() ) {
+		return array(
+			'title' => 'beta_title',
+			'intro' => 'beta_intro',
+		);
+	}
+	return null;
+}
+
+/**
+ * The release notes or beta page's title, in its language.
  *
  * @param array<string, string> $parts The title's parts.
  * @return array<string, string>
  */
 function nota_releases_title_parts( $parts ) {
-	if ( nota_is_releases() && ! nota_seo_plugin_active() && '' !== nota_plain( 'releases_title' ) ) {
-		$parts['title'] = nota_plain( 'releases_title' );
+	$copy = nota_seo_page_copy();
+	if ( $copy && ! nota_seo_plugin_active() && '' !== nota_plain( $copy['title'] ) ) {
+		$parts['title'] = nota_plain( $copy['title'] );
 	}
 	return $parts;
 }
@@ -55,7 +78,7 @@ add_filter( 'document_title_parts', 'nota_releases_title_parts' );
  * @return void
  */
 function nota_seo_cleanup() {
-	if ( nota_is_landing() || ( nota_is_releases() && ! nota_seo_plugin_active() ) ) {
+	if ( nota_is_landing() || ( nota_seo_page_copy() && ! nota_seo_plugin_active() ) ) {
 		remove_action( 'wp_head', 'rel_canonical' );
 		remove_action( 'wp_head', 'wp_shortlink_wp_head' );
 	}
@@ -78,8 +101,9 @@ function nota_og_image_url() {
  * @return void
  */
 function nota_seo_head() {
-	if ( nota_is_releases() ) {
-		nota_seo_releases_head();
+	$copy = nota_seo_page_copy();
+	if ( $copy ) {
+		nota_seo_page_head( $copy );
 		return;
 	}
 	if ( ! nota_is_landing() ) {
@@ -100,15 +124,16 @@ function nota_seo_head() {
 add_action( 'wp_head', 'nota_seo_head', 2 );
 
 /**
- * The release notes page's tags: its own canonical in each language, and the links
- * between the two.
+ * The release notes or beta page's tags: its own canonical in each language, and
+ * the links between the two.
  *
+ * @param array{title: string, intro: string} $copy Field keys, from nota_seo_page_copy().
  * @return void
  */
-function nota_seo_releases_head() {
+function nota_seo_page_head( $copy ) {
 	if ( ! nota_seo_plugin_active() ) {
-		$title = nota_plain( 'releases_title' );
-		nota_seo_tags( '' !== $title ? $title . ' · Nota' : 'Nota', nota_plain( 'releases_intro' ), nota_page_lang_url( nota_lang() ) );
+		$title = nota_plain( $copy['title'] );
+		nota_seo_tags( '' !== $title ? $title . ' · Nota' : 'Nota', nota_plain( $copy['intro'] ), nota_page_lang_url( nota_lang() ) );
 	}
 	foreach ( array( 'en', 'am' ) as $lang ) {
 		printf( '<link rel="alternate" hreflang="%s" href="%s">' . "\n", esc_attr( $lang ), esc_url( nota_page_lang_url( $lang ) ) );

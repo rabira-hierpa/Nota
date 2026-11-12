@@ -9,6 +9,13 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <section class="hero" aria-labelledby="hero-title">
 	<div class="wrap hero__grid">
+		<?php if ( '' !== trim( nota_t( 'hero_news' ) ) ) : ?>
+			<a class="news-pill" href="#anywhere">
+				<span class="news-pill__dot" aria-hidden="true"></span>
+				<span><?php nota_text( 'hero_news' ); ?></span>
+				<?php echo nota_icon( 'arrow-down' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- A file shipped with the theme. ?>
+			</a>
+		<?php endif; ?>
 		<?php nota_field( 'hero_title', 'h1', 'hero__title', 'hero-title' ); ?>
 		<div class="hero__side">
 			<?php nota_field( 'hero_text', 'p', 'hero__text' ); ?>

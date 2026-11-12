@@ -430,11 +430,12 @@ function nota_section_url( $id ) {
  */
 function nota_nav_items() {
 	return array(
-		'speech'  => 'nav_speech',
-		'notes'   => 'nav_notes',
-		'privacy' => 'nav_privacy',
-		'devices' => 'nav_devices',
-		'faq'     => 'nav_faq',
+		'speech'   => 'nav_speech',
+		'anywhere' => 'nav_anywhere',
+		'notes'    => 'nav_notes',
+		'privacy'  => 'nav_privacy',
+		'devices'  => 'nav_devices',
+		'faq'      => 'nav_faq',
 	);
 }
 

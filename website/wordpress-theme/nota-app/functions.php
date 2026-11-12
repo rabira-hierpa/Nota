@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'NOTA_THEME_VERSION', '1.2.0' );
+define( 'NOTA_THEME_VERSION', '1.4.0' );
 
 require_once get_theme_file_path( 'inc/content.php' );
 require_once get_theme_file_path( 'inc/helpers.php' );
@@ -16,6 +16,7 @@ require_once get_theme_file_path( 'inc/seo.php' );
 require_once get_theme_file_path( 'inc/elementor.php' );
 require_once get_theme_file_path( 'inc/github.php' );
 require_once get_theme_file_path( 'inc/releases.php' );
+require_once get_theme_file_path( 'inc/beta.php' );
 require_once get_theme_file_path( 'inc/analytics.php' );
 if ( is_admin() ) {
 	require_once get_theme_file_path( 'inc/dashboard.php' );

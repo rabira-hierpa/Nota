@@ -1,4 +1,5 @@
-/* Nota's site: the theme toggle, the clip, the visitor's system, today's date.
+/* Nota's site: the theme toggle, the clip, the band of phrases, the visitor's system, today's date,
+   the beta sign-up.
    The page reads and works without any of this. */
 (function () {
   "use strict";
@@ -155,6 +156,22 @@
     }
   });
 
+  /* --- The band of phrases ------------------------------------------------- */
+
+  /* It moves only from here, so with no script it stands still, and it never
+     moves with motion reduced. Its button pauses it and starts it again. */
+  document.querySelectorAll("[data-ticker]").forEach(function (band) {
+    var button = band.querySelector("[data-ticker-toggle]");
+    if (!button || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    band.classList.add("is-live");
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      var paused = button.getAttribute("aria-pressed") !== "true";
+      button.setAttribute("aria-pressed", paused ? "true" : "false");
+      band.classList.toggle("is-paused", paused);
+    });
+  });
+
   /* --- The visitor's system goes first ------------------------------------ */
 
   function detectSystem() {
@@ -175,6 +192,48 @@
       groups.insertBefore(mine, groups.firstElementChild);
       var tag = mine.querySelector(".dl-group__yours");
       if (tag) tag.hidden = false;
+    }
+  }
+
+  /* --- The beta sign-up ---------------------------------------------------- */
+
+  /* After a mistake, the list of what to fix takes the focus, so it is read out.
+     The answer's address (#beta-errors) does the same in browsers that focus what
+     an address points to; this is for the others. */
+  var betaErrors = document.querySelector("[data-beta-errors]");
+  if (betaErrors) betaErrors.focus();
+
+  /* The field shows its own @, so one typed or pasted in front goes. */
+  var telegram = document.getElementById("beta-telegram");
+  if (telegram) {
+    telegram.addEventListener("input", function () {
+      var bare = telegram.value.replace(/^\s*@+\s*/, "");
+      if (bare !== telegram.value) telegram.value = bare;
+    });
+  }
+
+  /* A new sign-up counts once in Umami, as "Beta sign-up" with the page's language.
+     Only a new one lands on #signed-up: a robot caught by the hidden field, an
+     address already on the list and a shared thank-you link land elsewhere. The
+     count is marked on this page's own entry in the history, which a reload and
+     Back or Forward bring back with it, and which the next sign-up doesn't share. */
+  if (location.hash === "#signed-up" && document.querySelector("[data-beta-done]")) {
+    var countSignup = function () {
+      if (!window.umami || typeof window.umami.track !== "function") return;
+      var state = history.state && typeof history.state === "object" ? history.state : {};
+      if (state.notaBetaCounted) return;
+      try {
+        /* No address given, so the address stays and Umami sees no new page. */
+        history.replaceState(Object.assign({}, state, { notaBetaCounted: true }), "");
+      } catch {
+        /* Unmarked, a reload may count again, which is better than not at all. */
+      }
+      window.umami.track("Beta sign-up", { lang: root.lang });
+    };
+    if (window.umami) {
+      countSignup();
+    } else {
+      window.addEventListener("load", countSignup);
     }
   }
 

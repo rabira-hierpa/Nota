@@ -60,6 +60,7 @@ function nota_customize_register( $wp_customize ) {
 
 	nota_customize_front_mode( $wp_customize );
 	nota_customize_copy( $wp_customize );
+	nota_customize_beta( $wp_customize );
 	nota_customize_links( $wp_customize );
 	nota_customize_stats( $wp_customize );
 	nota_customize_images( $wp_customize );
@@ -211,6 +212,50 @@ function nota_customize_copy( $wp_customize ) {
 				);
 			}
 		}
+	}
+}
+
+/**
+ * The beta page's two switches, beside its words: whether it takes sign-ups, and
+ * whether each one is emailed to the site's admin address.
+ *
+ * @param WP_Customize_Manager $wp_customize The Customizer.
+ * @return void
+ */
+function nota_customize_beta( $wp_customize ) {
+	$section = $wp_customize->get_section( 'nota_copy_beta' );
+	if ( $section ) {
+		$section->description = 'The page at /beta/ (or any page with the template "Nota beta sign-up"). Everyone who signs up is listed under Beta testers in the admin menu.';
+	}
+
+	$fields = array(
+		'nota_beta_open'   => array(
+			'label'       => 'Take sign-ups',
+			'description' => 'Untick to close the form; the page then shows the text for when sign-ups are closed.',
+		),
+		'nota_beta_notify' => array(
+			'label'       => 'Email me at each sign-up',
+			'description' => 'Sent to the site\'s admin address, ' . get_option( 'admin_email' ) . ' (Settings, General). Reply to the email to write to the tester.',
+		),
+	);
+	foreach ( $fields as $key => $field ) {
+		$wp_customize->add_setting(
+			$key,
+			array(
+				'default'           => true,
+				'sanitize_callback' => 'nota_sanitize_checkbox',
+			)
+		);
+		$wp_customize->add_control(
+			$key,
+			array(
+				'label'       => $field['label'],
+				'description' => $field['description'],
+				'section'     => 'nota_copy_beta',
+				'type'        => 'checkbox',
+				'priority'    => 1,
+			)
+		);
 	}
 }
 

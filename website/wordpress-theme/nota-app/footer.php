@@ -7,8 +7,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-// Elementor Pro's Theme Builder may replace the footer, but never on the landing page.
-if ( nota_is_landing() || ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_location( 'footer' ) ) :
+// Elementor Pro's Theme Builder may replace the footer, but not on the theme's own pages
+// (landing, releases, beta), which leave Elementor's styles and scripts out.
+if ( nota_is_bilingual() || ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_location( 'footer' ) ) :
 	$nota_social = array(
 		array( nota_opt( 'github_url' ), 'github-logo', 'GitHub' ),
 		array( nota_opt( 'facebook_url' ), 'facebook-logo', 'Facebook' ),

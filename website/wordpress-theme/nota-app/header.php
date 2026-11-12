@@ -19,8 +19,9 @@ $nota_lang = nota_lang();
 <?php wp_body_open(); ?>
 <a class="skip-link" href="#content"><?php echo esc_html( nota_ui( 'skip' ) ); ?></a>
 <?php
-// Elementor Pro's Theme Builder may replace the header, but never on the landing page.
-if ( nota_is_landing() || ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_location( 'header' ) ) :
+// Elementor Pro's Theme Builder may replace the header, but not on the theme's own pages
+// (landing, releases, beta), which leave Elementor's styles and scripts out.
+if ( nota_is_bilingual() || ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_location( 'header' ) ) :
 	?>
 <header class="site-header">
 	<div class="wrap site-header__row">

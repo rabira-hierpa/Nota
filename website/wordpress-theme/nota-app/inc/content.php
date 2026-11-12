@@ -38,6 +38,11 @@ function nota_content_sections() {
 					'en'    => 'Speech',
 					'am'    => 'ንግግር',
 				),
+				'nav_anywhere' => array(
+					'label' => 'Link to the any-app section',
+					'en'    => 'Any app',
+					'am'    => 'በማንኛውም መተግበሪያ',
+				),
 				'nav_notes'   => array(
 					'label' => 'Link to the features section',
 					'en'    => 'Features',
@@ -68,6 +73,11 @@ function nota_content_sections() {
 		'hero'      => array(
 			'title'  => 'Top of the page',
 			'fields' => array(
+				'hero_news'      => array(
+					'label' => 'Small link above the headline, to the any-app section (empty to hide)',
+					'en'    => 'Coming next: speak Amharic into any app',
+					'am'    => 'በቅርቡ፦ በማንኛውም መተግበሪያ ውስጥ በአማርኛ ይናገሩ',
+				),
 				'hero_title'     => array(
 					'label' => 'Headline',
 					'en'    => 'Amharic notes you can write or speak.',
@@ -89,6 +99,17 @@ function nota_content_sections() {
 					'type'  => 'textarea',
 					'en'    => "Nota's window: sections and tags on the left, the list of notes, and an open Amharic note with a highlight, a checklist and a link to another note.",
 					'am'    => 'የNota መስኮት፦ በግራ ክፍሎችና መለያዎች፣ የማስታወሻዎች ዝርዝር፣ እና ማድመቂያ፣ የማረጋገጫ ዝርዝርና ወደ ሌላ ማስታወሻ የሚወስድ አገናኝ ያለው የተከፈተ የአማርኛ ማስታወሻ።',
+				),
+			),
+		),
+		'ticker'    => array(
+			'title'  => 'Moving band under the top',
+			'fields' => array(
+				'ticker_items' => array(
+					'label' => 'Short phrases, one per line (empty to hide the band)',
+					'type'  => 'textarea',
+					'en'    => "Speak Amharic, get text\nይናገሩ፣ Nota ይጽፋል\nWorks offline\nNo account\nFree and open source\nmacOS · Windows · Linux\nAndroid · iOS\nThe Ethiopian calendar\nHohe, made for Amharic",
+					'am'    => "በአማርኛ ይናገሩ፣ ጽሑፍ ያግኙ\nSpeak Amharic, get text\nያለ ኢንተርኔት ይሠራል\nአካውንት አያስፈልግም\nነፃና ክፍት ምንጭ\nmacOS · Windows · Linux\nAndroid · iOS\nየኢትዮጵያ ዘመን አቆጣጠር\nለአማርኛ የተሠራው Hohe",
 				),
 			),
 		),
@@ -187,6 +208,104 @@ function nota_content_sections() {
 					'type'  => 'textarea',
 					'en'    => 'A voice memo from your phone or a Telegram voice message: drop it on the note list and get the Amharic text, up to 30 minutes at a time.',
 					'am'    => 'ከስልክዎ የድምፅ ቅጂ ወይም የቴሌግራም የድምፅ መልዕክት፦ በማስታወሻ ዝርዝሩ ላይ ይጣሉት፤ የአማርኛ ጽሑፉን ያገኛሉ። በአንድ ጊዜ እስከ 30 ደቂቃ።',
+				),
+			),
+		),
+		'anywhere'  => array(
+			'title'  => 'Dictate into any app',
+			'fields' => array(
+				'anywhere_badge'         => array(
+					'label' => 'Badge above the headline (change or empty it once the version is out)',
+					'en'    => 'Coming in the next version',
+					'am'    => 'በሚቀጥለው ስሪት ይመጣል',
+				),
+				'anywhere_title'         => array(
+					'label' => 'Headline',
+					'en'    => 'Speak Amharic into any app.',
+					'am'    => 'በማንኛውም መተግበሪያ ውስጥ በአማርኛ ይናገሩ።',
+				),
+				'anywhere_text'          => array(
+					'label' => 'Text under the headline',
+					'type'  => 'textarea',
+					'en'    => 'Mail, a browser, a chat: wherever your cursor is, Nota types what you say. It transcribes on your own device, and the audio never leaves it.',
+					'am'    => 'ኢሜይል፣ አሳሽ፣ የመልዕክት መተግበሪያ፦ ጠቋሚዎ ባለበት ሁሉ Nota የሚናገሩትን ይጽፋል። ወደ ጽሑፍ የሚቀይረው በራስዎ መሣሪያ ላይ ነው፤ ድምፁም ከመሣሪያው አይወጣም።',
+				),
+				'step_1_title'           => array(
+					'label' => 'Step 1: title',
+					'en'    => 'Hold',
+					'am'    => 'ይያዙ',
+				),
+				'step_1_text'            => array(
+					'label' => 'Step 1: text',
+					'type'  => 'textarea',
+					'en'    => 'Hold fn on a Mac, or press the shortcut. On Android, hold or tap the floating mic.',
+					'am'    => 'በማክ ላይ fn ይያዙ፣ ወይም አቋራጩን ይጫኑ። በAndroid ላይ ተንሳፋፊውን ማይክ ይያዙ ወይም ይንኩ።',
+				),
+				'step_2_title'           => array(
+					'label' => 'Step 2: title',
+					'en'    => 'Speak',
+					'am'    => 'ይናገሩ',
+				),
+				'step_2_text'            => array(
+					'label' => 'Step 2: text',
+					'type'  => 'textarea',
+					'en'    => 'Say it in Amharic, for as long as you need: up to 10 minutes on a computer, 5 on a phone.',
+					'am'    => 'በአማርኛ የፈለጉትን ያህል ይናገሩ፦ በኮምፒውተር እስከ 10 ደቂቃ፣ በስልክ እስከ 5 ደቂቃ።',
+				),
+				'step_3_title'           => array(
+					'label' => 'Step 3: title',
+					'en'    => 'Let go',
+					'am'    => 'ይልቀቁ',
+				),
+				'step_3_text'            => array(
+					'label' => 'Step 3: text',
+					'type'  => 'textarea',
+					'en'    => 'Let go, or press the shortcut again. The words appear at your cursor, with full stops and question marks.',
+					'am'    => 'ይልቀቁ፣ ወይም አቋራጩን እንደገና ይጫኑ። ቃላቱ ጠቋሚዎ ባለበት ይገባሉ፤ ሙሉ ማቆሚያዎችና የጥያቄ ምልክቶችም አብረው።',
+				),
+				'anywhere_desktop_title' => array(
+					'label' => 'Computer: title',
+					'en'    => 'On your computer',
+					'am'    => 'በኮምፒውተርዎ ላይ',
+				),
+				'anywhere_desktop_text'  => array(
+					'label' => 'Computer: text',
+					'type'  => 'textarea',
+					'en'    => 'Hold fn in any app, speak, and let go. For longer dictation, press ⌘⇧Space to start and again to stop (Ctrl+Shift+Space on Windows and Linux). A small pill shows it listening; Escape cancels.',
+					'am'    => 'በማንኛውም መተግበሪያ ውስጥ fn ይያዙ፣ ይናገሩና ይልቀቁ። ለረጅም ጊዜ ለመናገር ⌘⇧Space ይጫኑ፣ ለማቆም እንደገና ይጫኑ (በWindows እና Linux ላይ Ctrl+Shift+Space)። ትንሽ ምልክት ማዳመጡን ያሳያል፤ Escape ይሰርዘዋል።',
+				),
+				'anywhere_desktop_small' => array(
+					'label' => 'Computer: small print',
+					'type'  => 'textarea',
+					'en'    => 'Choose the key to hold (fn or a right-hand ⌘, ⌥, ⌃ or ⇧) and the shortcut in Settings, or keep each dictation as a voice note. On a Mac, typing into other apps needs Accessibility access; holding a key works on macOS only.',
+					'am'    => 'የሚይዙትን ቁልፍ (fn ወይም የቀኝ ⌘፣ ⌥፣ ⌃ ወይም ⇧) እና አቋራጩን በቅንብሮች ውስጥ ይምረጡ፤ ወይም እያንዳንዱን የድምፅ ጽሑፍ እንደ የድምፅ ማስታወሻ ያስቀምጡ። በማክ ላይ ወደ ሌሎች መተግበሪያዎች ለመጻፍ የAccessibility ፈቃድ ያስፈልጋል፤ ቁልፍ ይዞ መናገር የሚሠራው በmacOS ላይ ብቻ ነው።',
+				),
+				'anywhere_phone_title'   => array(
+					'label' => 'Android: title',
+					'en'    => 'On Android: the floating mic',
+					'am'    => 'በAndroid ላይ፦ ተንሳፋፊው ማይክ',
+				),
+				'anywhere_phone_text'    => array(
+					'label' => 'Android: text',
+					'type'  => 'textarea',
+					'en'    => 'While you type in any app, a round mic floats at the edge of the screen. Tap it to start and again to stop, or hold it while you speak. Drag it to the side that suits you.',
+					'am'    => 'በማንኛውም መተግበሪያ ሲጽፉ ክብ ማይክ በማያ ገጹ ጠርዝ ላይ ይንሳፈፋል። ለመጀመር ይንኩት፣ ለማቆም እንደገና ይንኩት፤ ወይም እየተናገሩ ተጭነው ይያዙት። ወደሚመችዎ ጎን ይጎትቱት።',
+				),
+				'anywhere_phone_small'   => array(
+					'label' => 'Android: small print',
+					'type'  => 'textarea',
+					'en'    => 'Turn it on in the app\'s Settings, Floating mic. Android asks you to allow it in Accessibility settings; it uses that only to find the text box and type into it. iPhones let no app float over others, so iOS has none.',
+					'am'    => 'በመተግበሪያው ቅንብሮች ውስጥ «ተንሳፋፊ ማይክ»ን ያብሩ። Android በAccessibility ቅንብሮች ውስጥ እንዲፈቅዱለት ይጠይቃል፤ ይህን የሚጠቀመው የጽሑፍ ሳጥኑን ለማግኘትና በውስጡ ለመጻፍ ብቻ ነው። iPhone ማንኛውም መተግበሪያ በሌሎች ላይ እንዲንሳፈፍ ስለማይፈቅድ በiOS ላይ የለም።',
+				),
+				'anywhere_sample'        => array(
+					'label' => 'Sentence in the pictures of the pill and the mic',
+					'en'    => 'ነገ ጠዋት ስብሰባው በሦስት ሰዓት ይጀምራል።',
+					'am'    => 'ነገ ጠዋት ስብሰባው በሦስት ሰዓት ይጀምራል።',
+				),
+				'anywhere_listening'     => array(
+					'label' => 'Word in the picture of the pill',
+					'en'    => 'Listening',
+					'am'    => 'እያዳመጠ ነው',
 				),
 			),
 		),
@@ -387,8 +506,8 @@ function nota_content_sections() {
 				'phone_text'     => array(
 					'label' => 'Phone: text',
 					'type'  => 'textarea',
-					'en'    => 'The same notes features and the same Hohe model, running on the phone itself. On Android, notes stay out of cloud backups.',
-					'am'    => 'ተመሳሳይ የማስታወሻ ባህሪያትና ተመሳሳይ የHohe ሞዴል፣ በስልኩ ላይ የሚሠራ። በAndroid ላይ ማስታወሻዎች ወደ ደመና ምትኬ አይገቡም።',
+					'en'    => 'The same notes features and the same Hohe model, running on the phone itself. On Android, a floating mic types Amharic into any app, and notes stay out of cloud backups.',
+					'am'    => 'ተመሳሳይ የማስታወሻ ባህሪያትና ተመሳሳይ የHohe ሞዴል፣ በስልኩ ላይ የሚሠራ። በAndroid ላይ ተንሳፋፊ ማይክ በማንኛውም መተግበሪያ ውስጥ አማርኛ ይጽፋል፤ ማስታወሻዎችም ወደ ደመና ምትኬ አይገቡም።',
 				),
 				'phone_caveat'   => array(
 					'label' => 'Phone: how to get it today',
@@ -609,8 +728,8 @@ function nota_content_sections() {
 				'faq_4_a'   => array(
 					'label' => 'Answer 4',
 					'type'  => 'textarea',
-					'en'    => 'A whole recording gets its full stops and question marks back from a small punctuation model that ships with the app. Dictate types the words as Hohe hears them, so there you add the marks yourself.',
-					'am'    => 'ሙሉ ቅጂ ከመተግበሪያው ጋር በሚመጣ ትንሽ የሥርዓተ ነጥብ ሞዴል ሙሉ ማቆሚያዎቹንና የጥያቄ ምልክቶቹን ያገኛል። በድምፅ መጻፍ ግን ቃላቱን Hohe እንደሰማቸው ይጽፋል፤ ስለዚህ ምልክቶቹን ራስዎ ይጨምራሉ።',
+					'en'    => 'A whole recording, and a dictation into another app, gets its full stops and question marks from a small punctuation model that ships with the app. Dictate inside a note types the words as Hohe hears them, so there you add the marks yourself.',
+					'am'    => 'ሙሉ ቅጂም ሆነ ወደ ሌላ መተግበሪያ የሚገባ የድምፅ ጽሑፍ ከመተግበሪያው ጋር በሚመጣ ትንሽ የሥርዓተ ነጥብ ሞዴል ሙሉ ማቆሚያዎቹንና የጥያቄ ምልክቶቹን ያገኛል። በማስታወሻ ውስጥ በድምፅ መጻፍ ግን ቃላቱን Hohe እንደሰማቸው ይጽፋል፤ ስለዚህ ምልክቶቹን ራስዎ ይጨምራሉ።',
 				),
 				'faq_5_q'   => array(
 					'label' => 'Question 5',
@@ -636,25 +755,41 @@ function nota_content_sections() {
 				),
 				'faq_7_q'   => array(
 					'label' => 'Question 7 (empty to hide)',
-					'en'    => '',
-					'am'    => '',
+					'en'    => 'Can I dictate into other apps?',
+					'am'    => 'ወደ ሌሎች መተግበሪያዎች በድምፅ መጻፍ እችላለሁ?',
 				),
 				'faq_7_a'   => array(
-					'label' => 'Answer 7',
+					'label' => 'Answer 7 (it says "from the next version": change that once it is out)',
 					'type'  => 'textarea',
-					'en'    => '',
-					'am'    => '',
+					'en'    => 'Yes, from the next version. On a computer, hold fn in any app (or press ⌘⇧Space, Ctrl+Shift+Space on Windows and Linux), speak, and Nota types the words where your cursor is. On Android, the floating mic does the same beside any text box. iPhones let no app float over others, so there is no floating mic on iOS.',
+					'am'    => 'አዎ፣ ከሚቀጥለው ስሪት ጀምሮ። በኮምፒውተር ላይ በማንኛውም መተግበሪያ ውስጥ fn ይያዙ (ወይም ⌘⇧Space ይጫኑ፤ በWindows እና Linux ላይ Ctrl+Shift+Space)፣ ይናገሩ፤ Nota ቃላቱን ጠቋሚዎ ባለበት ይጽፋል። በAndroid ላይ ተንሳፋፊው ማይክ በማንኛውም የጽሑፍ ሳጥን አጠገብ እንዲሁ ያደርጋል። iPhone ማንኛውም መተግበሪያ በሌሎች ላይ እንዲንሳፈፍ ስለማይፈቅድ በiOS ላይ ተንሳፋፊ ማይክ የለም።',
 				),
 				'faq_8_q'   => array(
 					'label' => 'Question 8 (empty to hide)',
-					'en'    => '',
-					'am'    => '',
+					'en'    => 'What can the floating mic see?',
+					'am'    => 'ተንሳፋፊው ማይክ ምን ማየት ይችላል?',
 				),
 				'faq_8_a'   => array(
 					'label' => 'Answer 8',
 					'type'  => 'textarea',
-					'en'    => '',
-					'am'    => '',
+					'en'    => 'Android\'s accessibility access is used for two things only: knowing which text box has focus, and typing into it. Nothing else on screen is read, and the audio never leaves the phone.',
+					'am'    => 'የAndroid የAccessibility ፈቃድ ለሁለት ነገሮች ብቻ ይውላል፦ የትኛው የጽሑፍ ሳጥን እንደተመረጠ ለማወቅና በውስጡ ለመጻፍ። በማያ ገጹ ላይ ያለ ሌላ ምንም ነገር አይነበብም፤ ድምፁም ከስልኩ አይወጣም።',
+				),
+			),
+		),
+		'closing'   => array(
+			'title'  => 'Closing band, above the footer',
+			'fields' => array(
+				'closing_title' => array(
+					'label' => 'Headline (empty to hide the band)',
+					'en'    => 'Write Amharic with your voice.',
+					'am'    => 'አማርኛን በድምፅዎ ይጻፉ።',
+				),
+				'closing_text'  => array(
+					'label' => 'Text under the headline',
+					'type'  => 'textarea',
+					'en'    => 'Free for macOS, Windows and Linux, with the speech model inside. No account to make, and nothing leaves your device.',
+					'am'    => 'ለmacOS፣ Windows እና Linux ነፃ፤ የንግግር ሞዴሉ ውስጡ አለ። አካውንት መክፈት አያስፈልግም፤ ምንም ነገር ከመሣሪያዎ አይወጣም።',
 				),
 			),
 		),
@@ -692,6 +827,70 @@ function nota_content_sections() {
 					'type'  => 'textarea',
 					'en'    => 'What changed in each version of Nota, from the notes published with it on GitHub.',
 					'am'    => 'በእያንዳንዱ የNota ስሪት ምን እንደተቀየረ፣ ከስሪቱ ጋር በGitHub ላይ ከወጣው ማስታወሻ።',
+				),
+			),
+		),
+		'beta'      => array(
+			'title'  => 'Beta sign-up page',
+			'fields' => array(
+				'beta_title'       => array(
+					'label' => 'Heading',
+					'en'    => 'Join the Nota beta',
+					'am'    => 'የNota ሙከራ ቡድንን ይቀላቀሉ',
+				),
+				'beta_intro'       => array(
+					'label' => 'Text under the heading, also the description in search results and when shared',
+					'type'  => 'textarea',
+					'en'    => 'Nota is a notes app made for Amharic: you speak, and it writes. Help test the newest builds on your own computer or phone, and tell us what to fix.',
+					'am'    => 'Nota ለአማርኛ የተሠራ የማስታወሻ መተግበሪያ ነው፤ እርስዎ ይናገራሉ፣ እሱ ይጽፋል። አዳዲስ ስሪቶቹን በራስዎ ኮምፒውተር ወይም ስልክ ላይ ሞክረው፣ መስተካከል ያለበትን ይንገሩን።',
+				),
+				'beta_steps_title' => array(
+					'label' => 'Heading above the steps',
+					'en'    => 'How it works',
+					'am'    => 'እንዴት ይሠራል?',
+				),
+				'beta_step_1'      => array(
+					'label' => 'Step 1 (empty all three to hide the steps)',
+					'en'    => 'Sign up here. It takes a minute.',
+					'am'    => 'እዚህ ይመዝገቡ፤ አንድ ደቂቃ ብቻ ይወስዳል።',
+				),
+				'beta_step_2'      => array(
+					'label' => 'Step 2',
+					'en'    => 'We send you the newest build on Telegram or by email.',
+					'am'    => 'አዲሱን ስሪት በቴሌግራም ወይም በኢሜይል እንልክልዎታለን።',
+				),
+				'beta_step_3'      => array(
+					'label' => 'Step 3',
+					'en'    => 'Use it for your own notes, and tell us what works and what doesn\'t.',
+					'am'    => 'ለራስዎ ማስታወሻዎች ይጠቀሙበት፤ የሚሠራውንና የማይሠራውን ይንገሩን።',
+				),
+				'beta_submit'      => array(
+					'label' => 'Button',
+					'en'    => 'Sign up for the beta',
+					'am'    => 'ለሙከራው ይመዝገቡ',
+				),
+				'beta_privacy'     => array(
+					'label' => 'Note under the button',
+					'type'  => 'textarea',
+					'en'    => 'We use your details only to send you the beta and to ask how it went. We don\'t share them, and we delete them when you ask.',
+					'am'    => 'መረጃዎን የምንጠቀመው የሙከራ ስሪቱን ለመላክና አጠቃቀሙ እንዴት እንደነበር ለመጠየቅ ብቻ ነው። ለማንም አናጋራውም፤ ሲጠይቁን እናጠፋዋለን።',
+				),
+				'beta_done_title'  => array(
+					'label' => 'After signing up: heading',
+					'en'    => 'You\'re on the list.',
+					'am'    => 'ተመዝግበዋል።',
+				),
+				'beta_done_text'   => array(
+					'label' => 'After signing up: text',
+					'type'  => 'textarea',
+					'en'    => 'Thank you. We\'ll send you the beta on Telegram or by email when there\'s a build for your device.',
+					'am'    => 'እናመሰግናለን። ለመሣሪያዎ የሚሆን ስሪት ሲዘጋጅ በቴሌግራም ወይም በኢሜይል እንልክልዎታለን።',
+				),
+				'beta_closed'      => array(
+					'label' => 'In place of the form while sign-ups are closed',
+					'type'  => 'textarea',
+					'en'    => 'The beta isn\'t taking sign-ups just now. Thank you for your interest.',
+					'am'    => 'ለጊዜው አዲስ የሙከራ ምዝገባ አንቀበልም። ስለ ፍላጎትዎ እናመሰግናለን።',
 				),
 			),
 		),
@@ -849,6 +1048,10 @@ function nota_ui_strings() {
 			'en' => 'Play the clip',
 			'am' => 'ቪዲዮውን አጫውት',
 		),
+		'ticker_pause' => array(
+			'en' => 'Pause the moving phrases',
+			'am' => 'የሚንቀሳቀሱትን ሐረጎች አቁም',
+		),
 		'footer_nav' => array(
 			'en' => 'Footer',
 			'am' => 'የግርጌ ምናሌ',
@@ -924,6 +1127,86 @@ function nota_ui_strings() {
 		'releases_downloads' => array(
 			'en' => '{count} downloads',
 			'am' => '{count} ጊዜ ወርዷል',
+		),
+		'beta_form' => array(
+			'en' => 'Sign up',
+			'am' => 'ምዝገባ',
+		),
+		'beta_name' => array(
+			'en' => 'Your name',
+			'am' => 'ስምዎ',
+		),
+		'beta_email' => array(
+			'en' => 'Email',
+			'am' => 'ኢሜይል',
+		),
+		'beta_telegram' => array(
+			'en' => 'Telegram username',
+			'am' => 'የቴሌግራም የተጠቃሚ ስም (username)',
+		),
+		'beta_telegram_hint' => array(
+			'en' => 'As in @abebe. No username yet? Make one in Telegram under Settings, Username.',
+			'am' => 'ለምሳሌ @abebe። ከሌለዎት በቴሌግራም Settings ውስጥ Username ላይ ያዘጋጁ።',
+		),
+		'beta_devices' => array(
+			'en' => 'What will you try it on?',
+			'am' => 'በምን ላይ ይሞክሩታል?',
+		),
+		'beta_devices_hint' => array(
+			'en' => 'Pick all that apply.',
+			'am' => 'የሚመለከቱዎትን ሁሉ ይምረጡ።',
+		),
+		'beta_note' => array(
+			'en' => 'How would you use Nota? (optional)',
+			'am' => 'Notaን ለምን ይጠቀሙበታል? (አማራጭ)',
+		),
+		'beta_consent' => array(
+			'en' => 'You may contact me by email or Telegram about the beta.',
+			'am' => 'ስለ ሙከራው በኢሜይል ወይም በቴሌግራም ሊያገኙኝ ይችላሉ።',
+		),
+		'beta_more' => array(
+			'en' => 'See what Nota does',
+			'am' => 'Nota ምን እንደሚሠራ ይመልከቱ',
+		),
+		'beta_again' => array(
+			'en' => 'Sign up someone else',
+			'am' => 'ሌላ ሰው ያስመዝግቡ',
+		),
+		'beta_err_summary' => array(
+			'en' => 'Please fix these, then send it again:',
+			'am' => 'እባክዎ እነዚህን አስተካክለው እንደገና ይላኩ፦',
+		),
+		'beta_err_name' => array(
+			'en' => 'Write your name.',
+			'am' => 'ስምዎን ይጻፉ።',
+		),
+		'beta_err_email' => array(
+			'en' => 'Write an email address, as in name@example.com.',
+			'am' => 'የኢሜይል አድራሻ ይጻፉ፤ ለምሳሌ name@example.com።',
+		),
+		'beta_err_telegram' => array(
+			'en' => 'Write your Telegram username: letters, numbers and _ only, starting with a letter.',
+			'am' => 'የቴሌግራም የተጠቃሚ ስምዎን ይጻፉ፦ የእንግሊዝኛ ፊደላት፣ ቁጥሮችና _ ብቻ፣ በፊደል የሚጀምር።',
+		),
+		'beta_err_devices' => array(
+			'en' => 'Pick at least one device.',
+			'am' => 'ቢያንስ አንድ መሣሪያ ይምረጡ።',
+		),
+		'beta_err_consent' => array(
+			'en' => 'Tick the box, so we may send you the beta.',
+			'am' => 'የሙከራ ስሪቱን እንድንልክልዎ ሳጥኑን ይምረጡ።',
+		),
+		'beta_err_busy' => array(
+			'en' => 'Too many sign-ups from here just now. Please try again in an hour.',
+			'am' => 'ከዚህ ብዙ ምዝገባዎች ደርሰዋል። እባክዎ ከአንድ ሰዓት በኋላ እንደገና ይሞክሩ።',
+		),
+		'beta_err_full' => array(
+			'en' => 'We\'ve had a lot of sign-ups today. Please try again tomorrow.',
+			'am' => 'ዛሬ ብዙ ምዝገባዎች ደርሰውናል። እባክዎ ነገ እንደገና ይሞክሩ።',
+		),
+		'beta_err_failed' => array(
+			'en' => 'Your sign-up couldn\'t be saved just now. Please try again.',
+			'am' => 'ምዝገባዎ አሁን ሊቀመጥ አልቻለም። እባክዎ እንደገና ይሞክሩ።',
 		),
 	);
 }

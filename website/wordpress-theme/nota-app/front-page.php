@@ -12,7 +12,7 @@ get_header();
 ?>
 <main id="content" class="landing">
 	<?php
-	foreach ( array( 'hero', 'proof', 'speech', 'notes', 'privacy', 'devices', 'download', 'faq' ) as $nota_part ) {
+	foreach ( array( 'hero', 'ticker', 'proof', 'speech', 'anywhere', 'notes', 'privacy', 'devices', 'download', 'faq', 'closing' ) as $nota_part ) {
 		get_template_part( 'template-parts/landing/' . $nota_part );
 	}
 	?>

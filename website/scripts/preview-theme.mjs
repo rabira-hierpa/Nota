@@ -5,7 +5,8 @@
  *   node website/scripts/preview-theme.mjs
  *
  * The page runs WordPress in the browser tab (WordPress Playground) and hands it
- * the zip from website/dist, so the zip never leaves this machine. Each reload is a
+ * the zip from website/dist, so the zip never leaves this machine. It adds the
+ * /beta/ and /releases/ pages, which the theme fills in by themselves. Each reload is a
  * new throwaway site with the newest zip, signed in as its admin. Edits made in it
  * are lost on reload. It needs a network connection, for WordPress itself.
  */
@@ -48,6 +49,8 @@ const PAGE = `<!doctype html>
   <strong>Nota preview</strong>
   <button data-path="/" aria-pressed="true" disabled>English</button>
   <button data-path="/?lang=am" lang="am" disabled>አማርኛ</button>
+  <button data-path="/beta/" disabled>Beta sign-up</button>
+  <button data-path="/wp-admin/edit.php?post_type=nota_beta_tester" disabled>Beta testers</button>
   <button data-path="/wp-admin/customize.php?autofocus[panel]=nota_landing" disabled>Edit in the Customizer</button>
   <button data-path="/wp-admin/themes.php" disabled>Themes</button>
   <span id="status" role="status">Starting WordPress, about a minute the first time.</span>
@@ -72,6 +75,10 @@ const PAGE = `<!doctype html>
             step: "installTheme",
             themeData: { resource: "literal", name: "nota-app-theme.zip", contents: zip },
             options: { activate: true },
+          },
+          {
+            step: "runPHP",
+            code: "<?php require_once '/wordpress/wp-load.php'; update_option('permalink_structure', '/%postname%/'); foreach (array('beta' => 'Beta', 'releases' => 'Release notes') as $slug => $title) { if (!get_page_by_path($slug)) { wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish', 'post_title' => $title, 'post_name' => $slug)); } } flush_rewrite_rules();",
           },
         ],
       },
